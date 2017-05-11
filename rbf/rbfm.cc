@@ -10,6 +10,7 @@
 
 RecordBasedFileManager* RecordBasedFileManager::_rbf_manager = NULL;
 PagedFileManager *RecordBasedFileManager::_pf_manager = NULL;
+RecordBasedFileManager *RBFM_ScanIterator::_rbf_manager = NULL;
 
 RecordBasedFileManager* RecordBasedFileManager::instance()
 {
@@ -21,11 +22,9 @@ RecordBasedFileManager* RecordBasedFileManager::instance()
 
 RBFM_ScanIterator::RBFM_ScanIterator()
 {
+    _rbf_manager = RecordBasedFileManager::instance();
     currentPage = 0;
     currentSlot = 0;
-    fileHandle = 0;
-    attrs = 0;
-    totalPages = 0;
 }
 
 RBFM_ScanIterator::~RBFM_ScanIterator()
@@ -33,25 +32,73 @@ RBFM_ScanIterator::~RBFM_ScanIterator()
 }
 
 RC RBFM_ScanIterator::getNextRecord(RID &rid, void* data)
-{
-    RID temp;
-    temp.pageNum = currentPage;
-    temp.slotNum = currentSlot;
-    while(1){
-        if(currentPage==totalPages)
-            return RBFM_EOF;
-        unsigned returnCode = _rbf_manager->readRecord(fileHandle, attrs, temp, data);
-        if(returnCode == SUCCESS){
-            currentSlot++;
-            rid = temp;
-            return SUCCESS;
-        }else if(returnCode ==RBFM_SLOT_DN_EXIST){
-            currentPage++;
-            currentSlot = 0;
-        }else{
-            return RBFM_EOF;
-        }
-    }
+{      
+    
+//     RID rid;
+//     void* attribute = malloc(1000);
+//     unsigned i;
+//     for(unsigned k = 0; k<totalPages;k++){
+//         //get the page
+//         void * pageData = malloc(PAGE_SIZE);
+//         if (fileHandle.readPage(k, pageData))
+//             return RBFM_READ_FAILED;
+
+//         SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
+//         for(unsigned j = 0; j<slotHeader.recordEntriesNumber;j++){          //need to check if dead
+//             SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, j);
+//             if(recordEntry.length == 0) continue;
+//             for(i = 0; i<recordDescriptor.size(); i++){
+//                 if(recordDescriptor[i].name == conditionAttribute){
+//                     break;
+//                 }   
+//             }
+//             rid.pageNum = k;
+//             rid.slotNum = j;
+//             if(readAttribute(fileHandle, recordDescriptor, rid, conditionAttribute, attribute))
+//                 return RBFM_READ_ATTRIBUTE_FAIL;
+
+//             int result = comparison(attribute, value, recordDescriptor[i]);
+
+//             switch(compOp){
+//                 case EQ_OP:
+//                     if(result == 0 ){
+//                         //insert
+//                     }
+//                     break;
+//                 case LT_OP:
+//                     if(result == -1){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case LE_OP:
+//                     if(result == 0 || result == -1){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case GT_OP:
+//                     if(result == 1){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case GE_OP:
+//                     if(result == 0 || result == 1){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case NE_OP:
+//                     if(result != 0){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case NO_OP:
+//                     rbfm_ScanIterator.ridResult.push_back(rid);
+//                     break;
+//             }
+//             memset(attribute, 0, 1000);
+//         }
+//         free(pageData);
+//     }
+//     return SUCCESS;
 }
 
 RecordBasedFileManager::RecordBasedFileManager()
@@ -66,25 +113,6 @@ RecordBasedFileManager::~RecordBasedFileManager()
 
 RC RecordBasedFileManager::createFile(const string &fileName) 
 {
-    // Creating a new paged file.
-    if (_pf_manager->createFile(fileName))
-        return RBFM_CREATE_FAILED;
-
-    // Setting up the first page.
-    void * firstPageData = calloc(PAGE_SIZE, 1);
-    if (firstPageData == NULL)
-        return RBFM_MALLOC_FAILED;
-    newRecordBasedPage(firstPageData);
-
-    // Adds the first record based page.
-    FileHandle handle;
-    if (_pf_manager->openFile(fileName.c_str(), handle))
-        return RBFM_OPEN_FAILED;
-    if (handle.appendPage(firstPageData))
-        return RBFM_APPEND_FAILED;
-    _pf_manager->closeFile(handle);
-
-    free(firstPageData);
 
     return SUCCESS;
 }
@@ -675,13 +703,11 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
         RID temp;
         temp.pageNum = tempPage;
         temp.slotNum = tempSlot;
-        readRecord(fileHandle,recordDescriptor, temp, data);
+        readRecord(fileHandle,recordDescriptor, temp, rData);
     }else{
         // Retrieve the actual entry data
         rData = malloc(recordEntry.length);
         getRecordAtOffset(pageData, recordEntry.offset, recordDescriptor, rData);
-cout<<"before print"<<endl;
-printRecord(recordDescriptor,rData);
     }
 
     // Parse the null indicator into an array
@@ -692,7 +718,6 @@ printRecord(recordDescriptor,rData);
 
     // We've read in the null indicator, so we can skip past it now
     unsigned offset = nullIndicatorSize;
-cout<<"Original offset: "<<offset<<endl;
 
     //find index of attribute and checks to see if attribute is null
     //if attribute is null then break with error
@@ -714,9 +739,9 @@ cout<<"Original offset: "<<offset<<endl;
             }
         }
     }
-    const char* nullString = "Null";                    //might be wrong==================================================
+    string nullString = "NULL";                    //might be wrong==================================================
     if(fieldIsNull(nullIndicator, i)){
-        memcpy(data, nullString, sizeof(nullString));
+        memcpy((char*)data, &nullString, 4);
         free(pageData);
         free(rData);
         return 0;
@@ -742,68 +767,86 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const vector<Attribute> 
       const CompOp compOp, const void *value, const vector<string> &attributeNames, RBFM_ScanIterator &rbfm_ScanIterator)
 {
     rbfm_ScanIterator.fileHandle = fileHandle;
+    rbfm_ScanIterator.recordDescriptor = recordDescriptor;
+    rbfm_ScanIterator.conditionAttribute = conditionAttribute;
+    rbfm_ScanIterator.compOp = compOp;
+    rbfm_ScanIterator.value = value;            //wrong========================================
+    rbfm_ScanIterator.attributeNames = attributeNames;
     rbfm_ScanIterator.totalPages = fileHandle.getNumberOfPages();
-    rbfm_ScanIterator.attrs = recordDescriptor;
-    RID rid;
-    void* record = malloc(1000);
-    void* attribute = malloc(1000);
-    int i;
-    for(i = 0; i<recordDescriptor.size(), i++){
-        if(recordDescriptor[i].name == conditionAttribute){
-            break;
-        }
-    }
-    while(rbfm_ScanIterator.getNextRecord(rid, record) != RBFM_EOF){
-        if(readAttribute(fileHandle, recordDescriptor, rid, conditionAttribute, attribute)
-            return RBFM_READ_ATTRIBUTE_FAIL;
-        int result = comparison(attribute, value, recordDescriptor[i]);
-        switch(compOp){
-            case EQ_OP:
-                if(result == 0 ){
-                    //write
-                }
-                break;
-            case LT_OP:
-                if(result == -1){
-                    //write
-                }
-                break;
-            case LE_OP:
-                if(result == 0 || result == -1){
-                    //write
-                }
-                break;
-            case GT_OP:
-                if(result == 1){
-                    //write
-                }
-                break;
-            case GE_OP:
-                if(result == 0 || result == 1){
-                    //write
-                }
-                break;
-            case NE_OP:
-                if(result != 0){
-                    //write
-                }
-                break;
-            case NO_OP:
-                //write
-                break;
-        }
-        memset(record,0,1000);
-        memset(attribute, 0, 1000);
-    }
     return SUCCESS;
+//     RID rid;
+//     void* attribute = malloc(1000);
+//     unsigned i;
+//     for(unsigned k = 0; k<fileHandle.getNumberOfPages();k++){
+//         //get the page
+//         void * pageData = malloc(PAGE_SIZE);
+//         if (fileHandle.readPage(k, pageData))
+//             return RBFM_READ_FAILED;
+
+//         SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
+//         for(unsigned j = 0; j<slotHeader.recordEntriesNumber;j++){          //need to check if dead
+//             SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, j);
+//             if(recordEntry.length == 0) continue;
+//             for(i = 0; i<recordDescriptor.size(); i++){
+//                 if(recordDescriptor[i].name == conditionAttribute){
+//                     break;
+//                 }   
+//             }
+//             rid.pageNum = k;
+//             rid.slotNum = j;
+//             if(readAttribute(fileHandle, recordDescriptor, rid, conditionAttribute, attribute))
+//                 return RBFM_READ_ATTRIBUTE_FAIL;
+
+//             int result = comparison(attribute, value, recordDescriptor[i]);
+
+//             switch(compOp){
+//                 case EQ_OP:
+//                     if(result == 0 ){
+//                         //insert
+//                     }
+//                     break;
+//                 case LT_OP:
+//                     if(result == -1){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case LE_OP:
+//                     if(result == 0 || result == -1){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case GT_OP:
+//                     if(result == 1){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case GE_OP:
+//                     if(result == 0 || result == 1){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case NE_OP:
+//                     if(result != 0){
+//                         rbfm_ScanIterator.ridResult.push_back(rid);
+//                     }
+//                     break;
+//                 case NO_OP:
+//                     rbfm_ScanIterator.ridResult.push_back(rid);
+//                     break;
+//             }
+//             memset(attribute, 0, 1000);
+//         }
+//         free(pageData);
+//     }
+//     return SUCCESS;
 }
 
-int RecordBasedFileManager::comparison(void* attribute, void* value, Attribute attr)
+int RecordBasedFileManager::comparison(const void* attribute, const void* value, Attribute attr)
 {
     if(attr.type == TypeVarChar){
         unsigned lengthVarChar;
         memcpy(&lengthVarChar, attribute, sizeof(int));
-        return memcmp(attribute + sizeof(int), value, lengthVarChar);
+        return memcmp((char*)attribute + sizeof(int), value, lengthVarChar);
     }else if( attr.type == TypeInt){
         if(*((int*)attribute) == *((int*)value)) return 0;
         else if(*((int*)attribute) < *((int*)value)) return -1;

@@ -4,6 +4,8 @@
 
 #include <string>
 #include <vector>
+#include <cstring>
+#include <cmath>
 
 #include "../rbf/rbfm.h"
 
@@ -28,8 +30,10 @@ public:
 
   // "data" follows the same format as RelationManager::insertTuple()
   RC getNextTuple(RID &rid, void *data);
+  RC initializeScanner(FileHandle &fileHandle, vector<Attribute> &attrs, unsigned totalPages);
   RC close() { return -1; };
 private:
+  static RecordBasedFileManager *_rbf_manager;
   RBFM_ScanIterator scanner;
 };
 
@@ -84,6 +88,7 @@ protected:
 
 private:
   static RelationManager *_rm;
+  static RecordBasedFileManager *_rbf_manager;
   int numberOfTables;
 
   vector<Attribute> createTableDescriptor();

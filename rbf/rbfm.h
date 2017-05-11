@@ -30,6 +30,8 @@
 
 using namespace std;
 
+class RecordBasedFileManager;
+
 // Record ID
 typedef struct
 {
@@ -110,8 +112,13 @@ public:
   RC getNextRecord(RID &rid, void *data);
   RC close() { return -1; };
 
+  static RecordBasedFileManager *_rbf_manager;
   FileHandle fileHandle;
-  vector<Attribute> attrs;
+  vector<Attribute> recordDescriptor;
+  string conditionAttribute;
+  CompOp compOp;
+  void* value;
+  vector<string> attributeNames;
   unsigned totalPages;
 private:
   unsigned currentPage;
@@ -206,6 +213,7 @@ private:
   void getRecordAtOffset(void *record, unsigned offset, const vector<Attribute> &recordDescriptor, void *data);
 
 //added
+  int comparison(const void* attribute, const void* value, Attribute attr);
   unsigned compaction(FileHandle &fileHandle, const RID &rid, const int change, void* pageData);
 };
 

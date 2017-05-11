@@ -2,10 +2,13 @@
 #include "rm.h"
 
 RelationManager* RelationManager::_rm = 0;
-RecordBasedFileManager* RecordBasedFileManager::_rbf_manager = NULL;
+// RecordBasedFileManager* RecordBasedFileManager::_rbf_manager = NULL;
+RecordBasedFileManager *RM_ScanIterator::_rbf_manager = NULL;
+RecordBasedFileManager *RelationManager::_rbf_manager = NULL;
 
 RM_ScanIterator::RM_ScanIterator()
 {
+    _rbf_manager = RecordBasedFileManager::instance();
     //need initialization
 }
 
@@ -13,12 +16,19 @@ RM_ScanIterator::~RM_ScanIterator()
 { 
 }
 
-RM_ScanIterator::getNextTuple(RID &rid, void *data){
+RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
     if(scanner.getNextRecord(rid, data) == RBFM_EOF){
         return RM_EOF;
     }else{
         return SUCCESS;
     }
+}
+
+RC RM_ScanIterator::initializeScanner(FileHandle &fileHandle, vector<Attribute> &attrs, unsigned totalPages){
+    scanner.fileHandle = fileHandle;
+    scanner.attrs = attrs;
+    scanner.totalPages = totalPages;
+    return SUCCESS;
 }
 
 RelationManager* RelationManager::instance()
@@ -70,20 +80,20 @@ RC RelationManager::createCatalog()
     memset(record, 0, 1000);
 //start to fill "Columns" table
     vector<Attribute> columnAttr = createColumnDescriptor();
-    nullFieldsIndicatorSize = getActualByteForNullsIndicator(columnAttr.size());
+    nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(columnAttr.size());
     free(nullsIndicator);
-    unsigned char *nullsIndicator = (unsigned char*)malloc(nullFieldsIndicatorActualSize);
-    memset(nullsIndicator, 0, nullFieldsIndicatorSize);
+    unsigned char *newNullsIndicator = (unsigned char*)malloc(nullFieldsIndicatorActualSize);
+    memset(newNullsIndicator, 0, nullFieldsIndicatorActualSize);
 
-    for(int i = 0; i<tableAttr.size();i++){
-        prepareColumnTuple(columnAttr.size(), nullsIndicator, 1, sizeof(tableAttr[i].name)-1,tableAttr[i].name,
+    for(unsigned i = 0; i<tableAttr.size();i++){
+        prepareColumnTuple(columnAttr.size(), newNullsIndicator, 1, sizeof(tableAttr[i].name)-1,tableAttr[i].name,
             tableAttr[i].type,tableAttr[i].length, i+1, record, &recordSize);
         insertTuple("Columns", record, rid);
         memset(record, 0, 1000);
     }
 
-    for(int i =0; i<columnAttr.size();i++){
-        prepareColumnTuple(columnAttr.size(), nullsIndicator, 2, sizeof(columnAttr[i].name)-1,columnAttr[i].name,
+    for(unsigned i =0; i<columnAttr.size();i++){
+        prepareColumnTuple(columnAttr.size(), newNullsIndicator, 2, sizeof(columnAttr[i].name)-1,columnAttr[i].name,
             columnAttr[i].type,columnAttr[i].length, i+1, record, &recordSize);
         insertTuple("Columns", record, rid);
         memset(record, 0, 1000);
@@ -128,13 +138,13 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
     memset(record, 0, 1000);
 //insert the table into "Columns"
     vector<Attribute> columnAttr = createColumnDescriptor();
-    nullFieldsIndicatorSize = getActualByteForNullsIndicator(columnAttr.size());
+    nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(columnAttr.size());
     free(nullsIndicator);
-    unsigned char *nullsIndicator = (unsigned char*)malloc(nullFieldsIndicatorActualSize);
-    memset(nullsIndicator, 0, nullFieldsIndicatorSize);
+    unsigned char *newNullsIndicator = (unsigned char*)malloc(nullFieldsIndicatorActualSize);
+    memset(newNullsIndicator, 0, nullFieldsIndicatorActualSize);
 
-    for(int i = 0; i<attrs.size();i++){
-        prepareColumnTuple(columnAttr.size(), nullsIndicator, numberOfTables+1, sizeof(attrs[i].name)-1,attrs[i].name,
+    for(unsigned i = 0; i<attrs.size();i++){
+        prepareColumnTuple(columnAttr.size(), newNullsIndicator, numberOfTables+1, sizeof(attrs[i].name)-1,attrs[i].name,
             attrs[i].type,attrs[i].length, i+1, record, &recordSize);
         insertTuple("Columns", record, rid);
         memset(record, 0, 1000);
@@ -147,9 +157,18 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
 
 RC RelationManager::deleteTable(const string &tableName)
 {
-    if(tableName =="Tables" || tableName ="Columns")        //may be wrong------------------------
-        return RM_SYSTEM_CATALOG_ACCESS;
-    return _rbf_manager ->destroyFile(tablename);
+    // if(tableName =="Tables" || tableName =="Columns")        //may be wrong------------------------
+    //     return RM_SYSTEM_CATALOG_ACCESS;
+    return _rbf_manager ->destroyFile(tableName);
+
+    // FileHandle fileHandle;
+    // if(_rbf_manager->openFile(tableName, fileHandle))
+    //     return RM_OPEN_FILE_FAIL;
+    // vector<Attribute> attr;
+    // getAttributes(tableName, attr);
+    // if(_rbf_manager->insertRecord(fileHandle, attr, data, rid))
+    //     return RM_INSERT_RECORD_FAIL;
+    // return SUCCESS;
 }
 
 RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &attrs)
@@ -171,8 +190,8 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 
 RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 {
-    if(tableName =="Tables" || tableName ="Columns")        //may be wrong-----------------
-        return RM_SYSTEM_CATALOG_ACCESS;
+    // if(tableName =="Tables" || tableName ="Columns")        //may be wrong-----------------
+    //     return RM_SYSTEM_CATALOG_ACCESS;
     FileHandle fileHandle;
     if(_rbf_manager->openFile(tableName, fileHandle))
         return RM_OPEN_FILE_FAIL;
