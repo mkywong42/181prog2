@@ -4,6 +4,23 @@
 RelationManager* RelationManager::_rm = 0;
 RecordBasedFileManager* RecordBasedFileManager::_rbf_manager = NULL;
 
+RM_ScanIterator::RM_ScanIterator()
+{
+    //need initialization
+}
+
+RM_ScanIterator::~RM_ScanIterator()
+{ 
+}
+
+RM_ScanIterator::getNextTuple(RID &rid, void *data){
+    if(scanner.getNextRecord(rid, data) == RBFM_EOF){
+        return RM_EOF;
+    }else{
+        return SUCCESS;
+    }
+}
+
 RelationManager* RelationManager::instance()
 {
     if(!_rm)
@@ -130,7 +147,8 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
 
 RC RelationManager::deleteTable(const string &tableName)
 {
-    //need to check if system or user table
+    if(tableName =="Tables" || tableName ="Columns")        //may be wrong------------------------
+        return RM_SYSTEM_CATALOG_ACCESS;
     return _rbf_manager ->destroyFile(tablename);
 }
 
@@ -153,6 +171,8 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 
 RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
 {
+    if(tableName =="Tables" || tableName ="Columns")        //may be wrong-----------------
+        return RM_SYSTEM_CATALOG_ACCESS;
     FileHandle fileHandle;
     if(_rbf_manager->openFile(tableName, fileHandle))
         return RM_OPEN_FILE_FAIL;
@@ -425,4 +445,12 @@ void RelationManager::prepareColumnTuple(int attributeCount, unsigned char *null
 	// }
 	
     *tupleSize = offset;
+}
+
+RC RelationManager::addAttribute(const string &tableName, const Attribute &attr){
+
+}
+
+RC dropAttribute(const string &tableName, const string &attributeName){
+
 }

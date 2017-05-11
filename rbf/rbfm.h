@@ -25,6 +25,8 @@
 #define RBFM_MEMMOVE_FAIL 9
 #define RBFM_ATTRIBUTE_IS_NULL 10
 #define RBFM_INVALID_RECORD_SIZE 11
+#define RBFM_READ_ATTRIBUTE_FAIL 12
+#define RBFM_COMPARE_FAIL 13
 
 using namespace std;
 
@@ -98,31 +100,22 @@ The scan iterator is NOT required to be implemented for the part 1 of the projec
 //  rbfmScanIterator.close();
 
 class RBFM_ScanIterator {
-  RecordBasedFileManager* RecordBasedFileManager::_rbf_manager = NULL;
 public:
-  RBFM_ScanIterator() {
-    currentPage = 0;
-    currentSlot = 0;
-    _rbf_manager = RecordBasedFileManager::instance();
-  };
-  ~RBFM_ScanIterator() {};
+  RBFM_ScanIterator();
+  ~RBFM_ScanIterator();
 
   // Never keep the results in the memory. When getNextRecord() is called, 
   // a satisfying record needs to be fetched from the file.
   // "data" follows the same format as RecordBasedFileManager::insertRecord().
-  RC getNextRecord(RID &rid, void *data) 
-  { 
-    RID temp;
-    temp.pageNum = currentPage;
-    temp.slotNum = currentSlot;
-    _rbf_manager->readRecord(file)
-
-    return RBFM_EOF; 
-  };
+  RC getNextRecord(RID &rid, void *data);
   RC close() { return -1; };
+
+  FileHandle fileHandle;
+  vector<Attribute> attrs;
+  unsigned totalPages;
 private:
-  uint32_t currentPage;
-  uint32_t currentSlot;
+  unsigned currentPage;
+  unsigned currentSlot;
 };
 
 

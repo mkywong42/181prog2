@@ -19,6 +19,41 @@ RecordBasedFileManager* RecordBasedFileManager::instance()
     return _rbf_manager;
 }
 
+RBFM_ScanIterator::RBFM_ScanIterator()
+{
+    currentPage = 0;
+    currentSlot = 0;
+    fileHandle = 0;
+    attrs = 0;
+    totalPages = 0;
+}
+
+RBFM_ScanIterator::~RBFM_ScanIterator()
+{
+}
+
+RC RBFM_ScanIterator::getNextRecord(RID &rid, void* data)
+{
+    RID temp;
+    temp.pageNum = currentPage;
+    temp.slotNum = currentSlot;
+    while(1){
+        if(currentPage==totalPages)
+            return RBFM_EOF;
+        unsigned returnCode = _rbf_manager->readRecord(fileHandle, attrs, temp, data);
+        if(returnCode == SUCCESS){
+            currentSlot++;
+            rid = temp;
+            return SUCCESS;
+        }else if(returnCode ==RBFM_SLOT_DN_EXIST){
+            currentPage++;
+            currentSlot = 0;
+        }else{
+            return RBFM_EOF;
+        }
+    }
+}
+
 RecordBasedFileManager::RecordBasedFileManager()
 {
     // Initialize the internal PagedFileManager instance
@@ -158,7 +193,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
     if(recordEntry.length == 0){
 
         free(pageData);
-        return 0;
+        return RBFM_RECORD_IS_DEAD;
     }else if( recordEntry.offset <0 ){
         int tempPage = (-1)* recordEntry.offset;
         int tempSlot = recordEntry.length;
@@ -704,9 +739,82 @@ cout<<"Original offset: "<<offset<<endl;
 
 
 RC RecordBasedFileManager::scan(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const string &conditionAttribute,
-      const CompOp compOp, const void *value, const vector<string> &attributeNames, RBFM_ScanIterator &rbfm_ScanIterator){
+      const CompOp compOp, const void *value, const vector<string> &attributeNames, RBFM_ScanIterator &rbfm_ScanIterator)
+{
+    rbfm_ScanIterator.fileHandle = fileHandle;
+    rbfm_ScanIterator.totalPages = fileHandle.getNumberOfPages();
+    rbfm_ScanIterator.attrs = recordDescriptor;
+    RID rid;
+    void* record = malloc(1000);
+    void* attribute = malloc(1000);
+    int i;
+    for(i = 0; i<recordDescriptor.size(), i++){
+        if(recordDescriptor[i].name == conditionAttribute){
+            break;
+        }
+    }
+    while(rbfm_ScanIterator.getNextRecord(rid, record) != RBFM_EOF){
+        if(readAttribute(fileHandle, recordDescriptor, rid, conditionAttribute, attribute)
+            return RBFM_READ_ATTRIBUTE_FAIL;
+        int result = comparison(attribute, value, recordDescriptor[i]);
+        switch(compOp){
+            case EQ_OP:
+                if(result == 0 ){
+                    //write
+                }
+                break;
+            case LT_OP:
+                if(result == -1){
+                    //write
+                }
+                break;
+            case LE_OP:
+                if(result == 0 || result == -1){
+                    //write
+                }
+                break;
+            case GT_OP:
+                if(result == 1){
+                    //write
+                }
+                break;
+            case GE_OP:
+                if(result == 0 || result == 1){
+                    //write
+                }
+                break;
+            case NE_OP:
+                if(result != 0){
+                    //write
+                }
+                break;
+            case NO_OP:
+                //write
+                break;
+        }
+        memset(record,0,1000);
+        memset(attribute, 0, 1000);
+    }
+    return SUCCESS;
+}
 
-        return -1;
+int RecordBasedFileManager::comparison(void* attribute, void* value, Attribute attr)
+{
+    if(attr.type == TypeVarChar){
+        unsigned lengthVarChar;
+        memcpy(&lengthVarChar, attribute, sizeof(int));
+        return memcmp(attribute + sizeof(int), value, lengthVarChar);
+    }else if( attr.type == TypeInt){
+        if(*((int*)attribute) == *((int*)value)) return 0;
+        else if(*((int*)attribute) < *((int*)value)) return -1;
+        else if(*((int*)attribute) > *((int*)value)) return 1;
+    }else{
+        if(*((float*)attribute) == *((float*)value)) return 0;
+        else if(*((float*)attribute) < *((float*)value)) return -1;
+        else if(*((float*)attribute) > *((float*)value)) return 1;
+    }
+    return RBFM_COMPARE_FAIL;
+
 }
 
 unsigned RecordBasedFileManager::compaction(FileHandle &fileHandle, const RID &rid, const int change, void* pageData)
