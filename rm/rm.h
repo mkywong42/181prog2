@@ -32,9 +32,10 @@ public:
   RC getNextTuple(RID &rid, void *data);
   RC initializeScanner(FileHandle &fileHandle, vector<Attribute> &attrs, unsigned totalPages);
   RC close() { return -1; };
+  RBFM_ScanIterator scanner;
 private:
   static RecordBasedFileManager *_rbf_manager;
-  RBFM_ScanIterator scanner;
+  
 };
 
 

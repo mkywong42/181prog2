@@ -54,7 +54,7 @@ struct Attribute {
 // Comparison Operator (NOT needed for part 1 of the project)
 typedef enum 
 { 
-    EQ_OP = 0,  // no condition// = 
+    EQ_OP = 0,  // = 
     LT_OP,      // <
     LE_OP,      // <=
     GT_OP,      // >
@@ -102,6 +102,7 @@ The scan iterator is NOT required to be implemented for the part 1 of the projec
 //  rbfmScanIterator.close();
 
 class RBFM_ScanIterator {
+  
 public:
   RBFM_ScanIterator();
   ~RBFM_ScanIterator();
@@ -117,12 +118,14 @@ public:
   vector<Attribute> recordDescriptor;
   string conditionAttribute;
   CompOp compOp;
-  void* value;
+  void* data;
   vector<string> attributeNames;
   unsigned totalPages;
 private:
   unsigned currentPage;
   unsigned currentSlot;
+  int comparison(const void* attribute, const void* value, Attribute &attr);
+  void insertion(void* data, RID rid, unsigned index);
 };
 
 
@@ -213,7 +216,6 @@ private:
   void getRecordAtOffset(void *record, unsigned offset, const vector<Attribute> &recordDescriptor, void *data);
 
 //added
-  int comparison(const void* attribute, const void* value, Attribute attr);
   unsigned compaction(FileHandle &fileHandle, const RID &rid, const int change, void* pageData);
 };
 

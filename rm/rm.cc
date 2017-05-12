@@ -24,12 +24,12 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
     }
 }
 
-RC RM_ScanIterator::initializeScanner(FileHandle &fileHandle, vector<Attribute> &attrs, unsigned totalPages){
-    scanner.fileHandle = fileHandle;
-    scanner.attrs = attrs;
-    scanner.totalPages = totalPages;
-    return SUCCESS;
-}
+// RC RM_ScanIterator::initializeScanner(FileHandle &fileHandle, vector<Attribute> &attrs, unsigned totalPages){
+//     scanner.fileHandle = fileHandle;
+//     scanner.attrs = attrs;
+//     scanner.totalPages = totalPages;
+//     return SUCCESS;
+// }
 
 RelationManager* RelationManager::instance()
 {
@@ -43,7 +43,6 @@ RelationManager::RelationManager()
 {
     // Initialize the internal RecordBasedFileManager instance
     _rbf_manager = RecordBasedFileManager::instance();
-    numberOfTables = 0;
 }
 
 RelationManager::~RelationManager()
@@ -159,6 +158,7 @@ RC RelationManager::deleteTable(const string &tableName)
 {
     // if(tableName =="Tables" || tableName =="Columns")        //may be wrong------------------------
     //     return RM_SYSTEM_CATALOG_ACCESS;
+cout<<"entering deleteTable"<<endl;
     return _rbf_manager ->destroyFile(tableName);
 
     // FileHandle fileHandle;
@@ -172,8 +172,17 @@ RC RelationManager::deleteTable(const string &tableName)
 }
 
 RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &attrs)
-{
-    return -1;
+{   
+    RID rid;
+    void* data = malloc(1000);
+    RM_ScanIterator rm_ScanIterator;
+    scan("Tables","", NO_OP,NULL,NULL,rm_ScanIterator);
+    memset(data, 0, 1000);
+    while(rm_ScanIterator.getNextTuple(rid, data)){
+        readAttribute(tableName, rid, "table-name", data);
+
+        //helllp meee
+    }
 }
 
 RC RelationManager::insertTuple(const string &tableName, const void *data, RID &rid)
@@ -252,7 +261,13 @@ RC RelationManager::scan(const string &tableName,
       const vector<string> &attributeNames,
       RM_ScanIterator &rm_ScanIterator)
 {
-    return -1;
+    FileHandle fileHandle;
+    if(_rbf_manager->openFile(tableName, fileHandle))
+        return RM_OPEN_FILE_FAIL;
+    vector<Attribute> attr;
+    _rbf_manager->getAttributes(tableName, attr);
+    rm_ScanIterator.scanner.scan(fileHandle, attr,conditionAttribute,compOp,value,attributeNames,scanner);
+    return SUCCESS;
 }
 
 // Returns the file descriptor for the Table catalog entry
