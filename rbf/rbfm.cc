@@ -25,7 +25,7 @@ RBFM_ScanIterator::RBFM_ScanIterator()
     _rbf_manager = RecordBasedFileManager::instance();
     currentPage = 0;
     currentSlot = 0;
-    
+    data = malloc(1000);
 }
 
 RBFM_ScanIterator::~RBFM_ScanIterator()
@@ -907,7 +907,7 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const vector<Attribute> 
     rbfm_ScanIterator.recordDescriptor = recordDescriptor;
     rbfm_ScanIterator.conditionAttribute = conditionAttribute;
     rbfm_ScanIterator.compOp = compOp;
-    rbfm_ScanIterator.data = malloc(1000);
+    rbfm_ScanIterator.data;
     rbfm_ScanIterator.attributeNames = attributeNames;
     rbfm_ScanIterator.totalPages = fileHandle.getNumberOfPages();
 

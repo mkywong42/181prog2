@@ -544,7 +544,7 @@ cout<<"Entered getNextRecord()"<<endl;
 
             // free(buffer);
         // j++;
-        memset(returnedData, 0, 2000);
+        // memset(returnedData, 0, 2000);
     }
     scanner.close();
 
