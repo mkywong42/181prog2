@@ -519,7 +519,7 @@ string attr = "Salary";
 vector<string> attributes;
 attributes.push_back(attr);
 unsigned newNullBitOffset = getActualByteForNullsIndicator(attributes.size());
-rbfm->scan(fileHandle, recordDescriptor, "Salary", NO_OP, &testSalary,attributes,scanner );
+rbfm->scan(fileHandle, recordDescriptor, "", NO_OP, NULL,attributes,scanner );
 while(scanner.getNextRecord(rid, returnedData) != RBFM_EOF)
     {
 cout<<"Entered getNextRecord()"<<endl;

@@ -907,12 +907,16 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const vector<Attribute> 
     rbfm_ScanIterator.recordDescriptor = recordDescriptor;
     rbfm_ScanIterator.conditionAttribute = conditionAttribute;
     rbfm_ScanIterator.compOp = compOp;
-    rbfm_ScanIterator.data;
     rbfm_ScanIterator.attributeNames = attributeNames;
     rbfm_ScanIterator.totalPages = fileHandle.getNumberOfPages();
 
     unsigned recordOffset=0;
     unsigned offset = 0;
+    if(value==NULL){
+        const void* nullString = "NULL";
+        memcpy((char*)(rbfm_ScanIterator.data), ((char*)nullString), 4);
+        return SUCCESS;
+    }
     for(unsigned j = 0; j<recordDescriptor.size(); j++){
         if(conditionAttribute == recordDescriptor[j].name){
             if(recordDescriptor[j].type ==TypeVarChar){
