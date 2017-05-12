@@ -24,13 +24,6 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
     }
 }
 
-// RC RM_ScanIterator::initializeScanner(FileHandle &fileHandle, vector<Attribute> &attrs, unsigned totalPages){
-//     scanner.fileHandle = fileHandle;
-//     scanner.attrs = attrs;
-//     scanner.totalPages = totalPages;
-//     return SUCCESS;
-// }
-
 RelationManager* RelationManager::instance()
 {
     if(!_rm)
@@ -158,7 +151,6 @@ RC RelationManager::deleteTable(const string &tableName)
 {
     // if(tableName =="Tables" || tableName =="Columns")        //may be wrong------------------------
     //     return RM_SYSTEM_CATALOG_ACCESS;
-cout<<"entering deleteTable"<<endl;
     return _rbf_manager ->destroyFile(tableName);
 
     // FileHandle fileHandle;
@@ -175,14 +167,28 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
 {   
     RID rid;
     void* data = malloc(1000);
+    void* tableIdBuffer = malloc(sizeof(int));
+    vector<string> tableIds;
+    tableIds.push_back("table-id");
     RM_ScanIterator rm_ScanIterator;
-    scan("Tables","", NO_OP,NULL,NULL,rm_ScanIterator);
+    scan("Tables","table-name", EQ_OP,&tableName,tableIds,rm_ScanIterator);     //scans all the tables and returns their ids
     memset(data, 0, 1000);
-    while(rm_ScanIterator.getNextTuple(rid, data)){
-        readAttribute(tableName, rid, "table-name", data);
+    rm_ScanIterator.getNextTuple(rid, tableIdBuffer);
+    readAttribute(tableName, rid, "table-name", data);
+    unsigned targetId = *((int*)data);
+    close(rm_ScanIterator);
 
-        //helllp meee
+    void* gotAttribute = malloc(100);
+    vector<string> attributes;
+    attributes.push_back("column-name")
+    attributes.push_back("column-type");
+    attributes.push_back("column-length");
+    RM_ScanIterator attributeGetter;
+    scan("Columns", "table-id", EQ_OP,&targetId, attributes,attributeGetter );
+    while(attributeGetter.getNextTuple(rid,gotAttribute)!=RM_EOF){
+
     }
+    return SUCCESS;
 }
 
 RC RelationManager::insertTuple(const string &tableName, const void *data, RID &rid)
@@ -265,8 +271,8 @@ RC RelationManager::scan(const string &tableName,
     if(_rbf_manager->openFile(tableName, fileHandle))
         return RM_OPEN_FILE_FAIL;
     vector<Attribute> attr;
-    _rbf_manager->getAttributes(tableName, attr);
-    rm_ScanIterator.scanner.scan(fileHandle, attr,conditionAttribute,compOp,value,attributeNames,scanner);
+    getAttributes(tableName, attr);
+    _rbf_manager->scan(fileHandle, attr,conditionAttribute,compOp,value,attributeNames,rm_ScanIterator.scanner);
     return SUCCESS;
 }
 
@@ -479,12 +485,4 @@ void RelationManager::prepareColumnTuple(int attributeCount, unsigned char *null
 	// }
 	
     *tupleSize = offset;
-}
-
-RC RelationManager::addAttribute(const string &tableName, const Attribute &attr){
-
-}
-
-RC dropAttribute(const string &tableName, const string &attributeName){
-
 }

@@ -522,8 +522,10 @@ unsigned newNullBitOffset = getActualByteForNullsIndicator(attributes.size());
 rbfm->scan(fileHandle, recordDescriptor, "", NO_OP, NULL,attributes,scanner );
 while(scanner.getNextRecord(rid, returnedData) != RBFM_EOF)
     {
-cout<<"Entered getNextRecord()"<<endl;
             int offset = 0;
+
+            // cout << "NULL Value: " << ((char *)returnedData) << endl;
+            // offset += 4;
 
             cout << "Real Value: " << *(int *)((char *)returnedData+newNullBitOffset) << endl;
             offset += 4;

@@ -39,28 +39,19 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void* data)
     void* record = malloc(1000);
     while(1){
         if(currentPage==totalPages){
-cout<<"here"<<endl;
-cout<<"current page "<<currentPage<<endl;
-cout<<"totalPages "<<totalPages<<endl;
             return RBFM_EOF;
         }
         temp.pageNum = currentPage;
         temp.slotNum = currentSlot;
         memset(record,0,1000);
-cout<<"about to readAttribute"<<endl;
         unsigned returnCode = _rbf_manager->readAttribute(fileHandle, recordDescriptor, temp, conditionAttribute,record);
-cout<<"currentslot"<<currentSlot<<endl;
-cout<<"currentPage"<<currentPage<<endl;
-cout<<"totalpages"<<totalPages<<endl;
         if(returnCode == SUCCESS){
-cout<<"return code == success"<<endl;
             // rid = temp;             //need to move============================
             for(i = 0; i<recordDescriptor.size(); i++){                     //i has the index of the record descriptor that is being matched
                 if(recordDescriptor[i].name == conditionAttribute){
                     break;
                 }   
             }
-cout<<"i: "<<i<<endl;
 
             int result = comparison(record, data, recordDescriptor[i]);
             switch(compOp){
@@ -122,25 +113,19 @@ cout<<"i: "<<i<<endl;
                     insertion(data, temp, i);
                     rid = temp;
                     currentSlot++;
-cout << "Value to be returned: " << *((int *)((char *)data+1)) << endl;
-// cout << "Value to be returned: " << *(int *)((char *)this.data+1) << endl;
                     free(record);
                     return SUCCESS;
             }
             currentSlot++;
-cout<<"modified slot:"<<currentSlot<<endl;
             continue;
         }else if(returnCode == RBFM_SLOT_DN_EXIST){
-cout<<"record slot dn"<<endl;
             currentPage++;
             currentSlot = 0;
             continue;
         }else if(returnCode ==RBFM_RECORD_IS_DEAD){
-cout<<"record is dead"<<endl;
             currentSlot++;
             continue;
         }else{
-cout<<"other"<<endl;
             free(record);
             return RBFM_EOF;
         }
@@ -148,6 +133,11 @@ cout<<"other"<<endl;
 }
 
 void RBFM_ScanIterator::insertion(void* newData, RID rid, unsigned index){
+    if(attributeNames.size()==0){
+        const void* nullString = "NULL";
+        memcpy((char*)(newData), ((char*)nullString), 4);
+        return;
+    }
 
     unsigned newNullBitSize = int(ceil((double) attributeNames.size() / CHAR_BIT));
     unsigned offset = newNullBitSize;
@@ -174,33 +164,10 @@ void RBFM_ScanIterator::insertion(void* newData, RID rid, unsigned index){
             memcpy((char*)newData+offset, (char*)buffer+recordOffset, lengthVarChar);
         }else{
             memcpy((char*)newData + offset, (char*)buffer+recordOffset, sizeof(int) );
-cout<<"in insertion: "<<*((int*)((char*)data+1))<<endl;
         }
     }
     free(buffer);
     free(nullsIndicator);
-        // for(unsigned k =0;k<recordDescriptor.size();k++){
-        //     if(recordDescriptor[k].name==attributeNames[j]){
-        //         if(recordDescriptor[k].type ==TypeVarChar){
-        //             unsigned lengthVarChar;
-        //             memcpy(&lengthVarChar, (char*)record+recordOffset, sizeof(int));
-        //             memcpy((char*)data+offset, (char*)record+recordOffset,sizeof(int));
-        //             recordOffset+=sizeof(int);
-        //             offset+= sizeof(int);
-        //             memcpy((char*)data+offset, (char*)record+recordOffset, lengthVarChar);
-        //             recordOffset+=lengthVarChar;
-        //             offset+=lengthVarChar;
-        //         }else if(recordDescriptor[k].type == TypeInt){
-        //             memcpy((char*)data+offset, &intValue, sizeof(int));
-        //             offset+=sizeof(int);
-        //         }else{
-        //             mempcpy((char*)data+offset, &floatValue, sizeof(int));
-        //             offset+=sizeof(float);
-        //         }
-        //     }
-        // }
-    
-
 }
 
 int RBFM_ScanIterator::comparison(const void* attribute, const void* value, Attribute &attr)
@@ -211,8 +178,6 @@ int RBFM_ScanIterator::comparison(const void* attribute, const void* value, Attr
         memcpy(&lengthVarChar, attribute, sizeof(int));
         return memcmp((char*)attribute + sizeof(int)+nullBitSize, (char*)value + sizeof(int), lengthVarChar);
     }else if( attr.type == TypeInt){
-cout<<"attribute: "<<*((int*)((char*)attribute+nullBitSize))<<endl;
-cout<<"data: "<<*((int*)data)<<endl;
         if(*((int*)((char*)attribute+nullBitSize)) == *((int*)value)) return 0;
         else if(*((int*)((char*)attribute+nullBitSize)) < *((int*)value)) return -1;
         else if(*((int*)((char*)attribute+nullBitSize)) > *((int*)value)) return 1;
@@ -920,7 +885,6 @@ RC RecordBasedFileManager::scan(FileHandle &fileHandle, const vector<Attribute> 
     for(unsigned j = 0; j<recordDescriptor.size(); j++){
         if(conditionAttribute == recordDescriptor[j].name){
             if(recordDescriptor[j].type ==TypeVarChar){
-cout<<"In VarChar: "<<recordDescriptor[j].name<<endl;
                 unsigned lengthVarChar;
                 memcpy(&lengthVarChar, (char*)value, sizeof(int));
                 memcpy((char*)(rbfm_ScanIterator.data), (char*)value, sizeof(int));
@@ -928,11 +892,8 @@ cout<<"In VarChar: "<<recordDescriptor[j].name<<endl;
                 // recordOffset+=sizeof(int);
                 memcpy((char*)(rbfm_ScanIterator.data)+offset, (char*)value+offset, lengthVarChar);
             }else if(recordDescriptor[j].type == TypeInt){
-cout<<"In Int: "<<recordDescriptor[j].name<<endl;
                 memcpy((char*)(rbfm_ScanIterator.data), (char*)value+offset, sizeof(int));
-cout<<"rbfm_ScanIterator: "<<*((int*)((char*)rbfm_ScanIterator.data))<<endl;
             }else{
-cout<<"In Float: "<<recordDescriptor[j].name<<endl;
                 memcpy((char*)(rbfm_ScanIterator.data), (char*)value+offset, sizeof(float));
             }
         }

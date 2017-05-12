@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstring>
 #include <cmath>
+#include <iostream>
 
 #include "../rbf/rbfm.h"
 
@@ -30,7 +31,6 @@ public:
 
   // "data" follows the same format as RelationManager::insertTuple()
   RC getNextTuple(RID &rid, void *data);
-  RC initializeScanner(FileHandle &fileHandle, vector<Attribute> &attrs, unsigned totalPages);
   RC close() { return -1; };
   RBFM_ScanIterator scanner;
 private:
