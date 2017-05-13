@@ -22,6 +22,7 @@ using namespace std;
 # define RM_PRINT_RECORD_FAIL 7
 # define RM_INSERT_RECORD_FAIL 8
 # define RM_SYSTEM_CATALOG_ACCESS 9
+# define RM_FILE_CLOSE_FAIL 10
 
 // RM_ScanIterator is an iteratr to go through tuples
 class RM_ScanIterator {

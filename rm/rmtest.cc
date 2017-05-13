@@ -289,7 +289,7 @@ RC TEST_RM_5(const string &tableName, const int nameLength, const string &name, 
     // Test Delete Table
     rc = rm->deleteTable(tableName);
     assert(rc == success && "RelationManager::deleteTable() should not fail.");
-    
+ 
     // Reading a tuple on a deleted table
     memset((char*)returnedData1, 0, 200);
     rc = rm->readTuple(tableName, rid, returnedData1);
@@ -566,6 +566,7 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
     // Read the updated records and check the integrity
     for(int i = 0; i < 1000; i++)
     {
+cout<<"rmtest10: "<<i<<endl;
         memset(tuple, 0, 2000);
         memset(returnedData, 0, 2000);
         prepareLargeTuple(attrs.size(), nullsIndicator, i+10, tuple, &size);

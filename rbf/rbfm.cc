@@ -53,8 +53,8 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void* data)
                     break;
                 }   
             }
-void* intBuffer = malloc(sizeof(int));
-memcpy(intBuffer, record, sizeof(int));
+// void* intBuffer = malloc(sizeof(int));
+// memcpy(intBuffer, record, sizeof(int));
             int result = comparison(record, data, recordDescriptor[i]);
 // cout<<"Comparison result: "<<result<<endl;
             switch(compOp){
@@ -564,11 +564,13 @@ void RecordBasedFileManager::setRecordAtOffset(void *page, unsigned offset, cons
             {
                 case TypeInt:
                     memcpy (start + rec_offset, data_start, INT_SIZE);
+// cout<<"in setrecord: int: "<<*((int*)((char*)start+rec_offset))<<endl;
                     rec_offset += INT_SIZE;
                     data_offset += INT_SIZE;
                 break;
                 case TypeReal:
                     memcpy (start + rec_offset, data_start, REAL_SIZE);
+// cout<<"in setrecord: float: "<<*((float*)((char*)start+rec_offset))<<endl;
                     rec_offset += REAL_SIZE;
                     data_offset += REAL_SIZE;
                 break;
@@ -577,6 +579,7 @@ void RecordBasedFileManager::setRecordAtOffset(void *page, unsigned offset, cons
                     // We have to get the size of the VarChar field by reading the integer that precedes the string value itself
                     memcpy(&varcharSize, data_start, VARCHAR_LENGTH_SIZE);
                     memcpy(start + rec_offset, data_start + VARCHAR_LENGTH_SIZE, varcharSize);
+// cout<<"in setrecord: varChar: "<<(char*)start+rec_offset<<endl;
                     // We also have to account for the overhead given by that integer.
                     rec_offset += varcharSize;
                     data_offset += VARCHAR_LENGTH_SIZE + varcharSize;
@@ -739,8 +742,10 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
 
     //4.  if alive then
     }else{
-        unsigned newRecordSize = getRecordSize(recordDescriptor, data);
-        unsigned oldRecordSize = recordEntry.length;
+        int newRecordSize = getRecordSize(recordDescriptor, data);
+// cout<<"newRecordSize: "<<newRecordSize<<endl;
+        int oldRecordSize = recordEntry.length;
+// cout<<"oldRecordSize: "<<oldRecordSize<<endl;
 
         // a. new record same size
         if(newRecordSize==oldRecordSize){
@@ -761,11 +766,16 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
 // 		    -have enough free space
             unsigned freePageSpace = getPageFreeSpaceSize(pageData);
             if(freePageSpace >= newRecordSize){
+// cout<<"Should be here in updateRecord()"<<endl;
 // 			        1. expand
                 unsigned newOffset = compaction(fileHandle, rid, oldRecordSize-newRecordSize, pageData);
+// cout<<"change: "<<(oldRecordSize-newRecordSize)<<endl;
+// cout<<"newOffset: "<<newOffset<<endl;
 //                  2. insert
                 setRecordAtOffset(pageData, newOffset, recordDescriptor, data);
-
+                recordEntry.offset = newOffset;
+                recordEntry.length = newRecordSize;
+                setSlotDirectoryRecordEntry(pageData, rid.slotNum, recordEntry);
 // 		    - don’t have enough free space
             }else{
 // 			    1. find page
@@ -782,6 +792,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
         }
         if (fileHandle.writePage(rid.pageNum, pageData))
             return RBFM_WRITE_FAILED;
+
     }
     return 0;
 

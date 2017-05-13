@@ -17,6 +17,16 @@ RM_ScanIterator::~RM_ScanIterator()
 }
 
 RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
+    FileHandle tableHandle;
+    if(_rbf_manager->openFile("Tables",tableHandle)) {      
+         return RM_OPEN_FILE_FAIL;
+    }   
+
+    FileHandle columnHandle;
+    if(_rbf_manager->openFile("Columns", columnHandle))
+        return RM_OPEN_FILE_FAIL;
+
+
     if(scanner.getNextRecord(rid, data) == RBFM_EOF){
         return RM_EOF;
     }else{
@@ -187,7 +197,7 @@ RC RelationManager::deleteTable(const string &tableName)
 RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &attrs)
 {   
     FileHandle tableHandle;
-    if(_rbf_manager->openFile("Tables",tableHandle)) {      //need to be changed
+    if(_rbf_manager->openFile("Tables",tableHandle)) {     
          return RM_OPEN_FILE_FAIL;
     }   
 
@@ -275,6 +285,10 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
         attrs.push_back(add);
 
     }
+    if(_rbf_manager->closeFile(tableHandle))
+        return RM_FILE_CLOSE_FAIL;
+    if(_rbf_manager->closeFile(columnHandle))
+        return RM_FILE_CLOSE_FAIL;
     return SUCCESS;
 }
 
@@ -290,6 +304,8 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
 // cout<<"insert tuple: got attributes"<<endl;
     if(_rbf_manager->insertRecord(fileHandle, attr, data, rid))
         return RM_INSERT_RECORD_FAIL;
+    if(_rbf_manager->closeFile(fileHandle))
+        return RM_FILE_CLOSE_FAIL;
     return SUCCESS;
 }
 
@@ -304,6 +320,8 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid)
     getAttributes(tableName, attr);
     if(_rbf_manager->deleteRecord(fileHandle, attr, rid))
         return RM_DELETE_RECORD_FAIL;
+    if(_rbf_manager->closeFile(fileHandle))
+        return RM_FILE_CLOSE_FAIL;
     return SUCCESS;
 }
 
@@ -316,6 +334,8 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
     getAttributes(tableName, attr);
     if(_rbf_manager->updateRecord(fileHandle, attr, data, rid))
         return RM_UPDATE_RECORD_FAIL;
+    if(_rbf_manager->closeFile(fileHandle))
+        return RM_FILE_CLOSE_FAIL;
     return SUCCESS;
 }
 
@@ -328,6 +348,8 @@ RC RelationManager::readTuple(const string &tableName, const RID &rid, void *dat
     getAttributes(tableName, attr);
     if(_rbf_manager->readRecord(fileHandle, attr, rid, data))
         return RM_READ_RECORD_FAIL;
+    if(_rbf_manager->closeFile(fileHandle))
+        return RM_FILE_CLOSE_FAIL;
     return SUCCESS;
 }
 
@@ -347,6 +369,8 @@ RC RelationManager::readAttribute(const string &tableName, const RID &rid, const
     getAttributes(tableName, attr);
     if(_rbf_manager->readAttribute(fileHandle, attr, rid, attributeName, data))
         return RM_READ_RECORD_FAIL;
+    if(_rbf_manager->closeFile(fileHandle))
+        return RM_FILE_CLOSE_FAIL;
     return SUCCESS;
 }
 
@@ -364,6 +388,8 @@ RC RelationManager::scan(const string &tableName,
 // cout<<"scan: about to getAttributes"<<endl;
     getAttributes(tableName, attr);
     _rbf_manager->scan(fileHandle, attr,conditionAttribute,compOp,value,attributeNames,rm_ScanIterator.scanner);
+    // if(_rbf_manager->closeFile(fileHandle))
+    //     return RM_FILE_CLOSE_FAIL;
     return SUCCESS;
 }
 

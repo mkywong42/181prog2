@@ -514,7 +514,7 @@ rbfm->printRecord(recordDescriptor, newUpdateRecord);
 // cout<<((char*)recordResult)<<endl;
 
 RBFM_ScanIterator scanner;
-int testSalary =7000;
+// int testSalary =7000;
 string attr = "Salary";
 vector<string> attributes;
 attributes.push_back(attr);
