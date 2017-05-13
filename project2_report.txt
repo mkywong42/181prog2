@@ -1,24 +1,63 @@
 1. Basic information
-Team Number : 
-Student ID# of Submitter:
-Name of Submitter: 
+Team Number : 29
+Student ID# of Submitter: 1474026
+Name of Submitter: Michael Wong
 ID#s and Names for others on the Team
-
+    Chad Aldrich
+    Tiffany Lee
 
 2. Meta-data
 - Show your meta-data design (Tables and Columns table) and information about each column.
 
+    Tables (table-id:int, table-name:varchar(50), file-name:varchar(50), user-type: int)
+    Columns(table-id:int, column-name:varchar(50), column-type:int, column-length:int, column-position:int)
+
+    Table-id corresponds to Tables' table-id and all the columns of a certain table have the same table-id.  The Tables
+    table has table-id 1 and the Columns table has table-id of 2.  The Column-name refers to the attribute's name such
+    as EmpName or Age.  The column-type refers to the attribute's type such as TypeInt or TypeVarChar.  The column-length
+    is the attribute's length.  For TypeInt and TypeReal this is 4 and for TypeVarChar it is 50.  Lastly, column-position is
+    the positon of the attribute within the record descriptor.  For example, for the record description of 
+        EmpName, Age, Height,Salary
+    EmpName would have position 1, Age have position 2, etc.
 
 3. Internal Record Format
 - Show your record format design and describe how your design satisfies O(1) field access. If not, just mention that your team hasn't implemented this feature.
+
+    We used the codebase provided by the instructors.  Our record format is:
+
+        attribute count|null indicators|pointers|field data
+
+    The attribute count tells how many attributes are are in the record.  The null indicators indicate which fields are null.
+    The pointers store the byte offset of the end of the corresponding field relative to the beginning of the record.  The field
+    data contains the actual data for the record, not including null fields.
+
+    This allows for O(1) field access because of the pointers.  If you want field x and it is not null, then field x can be found by:
+        if the x is the first attribute then go to the end of the pointers
+        if x is not the first attribute then go to the offset pointed by the x-1 pointer(because each pointer
+        points at the end of the field)
+    This is fast and is mostly basic arithmetic.
+
 - Describe how you store a VarChar field.
+    A VarChar field has two parts.  First it has a TypeInt storing how long the actual VarChar data is.  Then it has
+    a field of that length containing the data.  For example the VarChar "Anteater" composed of a TypeInt of value 8 
+    followed by the data "Anteater"
+
 - Describe how you deal with an update and delete.
 
 
 4. Page Format
 - Show your page format design.
-- Describe how you deal with an update and delete.
+    The code provided to us contains a slotheader at the beginning of the page which contains the number of entries
+    and the free space offset.  This is followed by the slot directory.  Each slot in the slot directory contains the
+    length and offset of every record to ever exist on the page.  Free space is in the middle of the page.  At the end of 
+    the page is all the records, growing backwards from the very back of the page.  This means that if there are x 
+    records on a page then the free space offset points at the beginning of record x.
 
+- Describe how you deal with an update and delete.
+    For either case we first check if the record is dead, moved or alive.
+    For both update and delete we have a helper function, compaction(), that moves all the records after the record a certain
+    distance and updates the slot directory with the appropriate offsets.  For deletion, compaction moves all the records
+    after the record to be deleted 
 
 5. File Format
 - Show your file format design

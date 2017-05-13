@@ -4,6 +4,9 @@
 
 #include <string>
 #include <vector>
+#include <cstring>
+#include <cmath>
+#include <iostream>
 
 #include "../rbf/rbfm.h"
 
@@ -18,16 +21,21 @@ using namespace std;
 # define RM_READ_RECORD_FAIL 6
 # define RM_PRINT_RECORD_FAIL 7
 # define RM_INSERT_RECORD_FAIL 8
+# define RM_SYSTEM_CATALOG_ACCESS 9
 
 // RM_ScanIterator is an iteratr to go through tuples
 class RM_ScanIterator {
 public:
-  RM_ScanIterator() {};
-  ~RM_ScanIterator() {};
+  RM_ScanIterator();
+  ~RM_ScanIterator();
 
   // "data" follows the same format as RelationManager::insertTuple()
-  RC getNextTuple(RID &rid, void *data) { return RM_EOF; };
+  RC getNextTuple(RID &rid, void *data);
   RC close() { return -1; };
+  RBFM_ScanIterator scanner;
+private:
+  static RecordBasedFileManager *_rbf_manager;
+  
 };
 
 
@@ -70,6 +78,10 @@ public:
       const vector<string> &attributeNames, // a list of projected attributes
       RM_ScanIterator &rm_ScanIterator);
 
+  RC addAttribute(const string &tableName, const Attribute &attr);
+
+  RC dropAttribute(const string &tableName, const string &attributeName);
+
 
 protected:
   RelationManager();
@@ -77,6 +89,7 @@ protected:
 
 private:
   static RelationManager *_rm;
+  static RecordBasedFileManager *_rbf_manager;
   int numberOfTables;
 
   vector<Attribute> createTableDescriptor();

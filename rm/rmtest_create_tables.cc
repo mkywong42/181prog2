@@ -10,6 +10,8 @@ int main()
   // Try to delete the System Catalog.
   // If this is the first time, it will generate an error. It's OK and we will ignore that.
   RC rc = rm->deleteCatalog();
+  //added
+  // RC rc;
 
   rc = rm->createCatalog();
   assert (rc == success && "Creating the Catalog should not fail.");
