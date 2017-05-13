@@ -460,7 +460,6 @@ RC TEST_RM_8(const string &tableName, vector<RID> &rids, vector<int> &sizes)
         int size = 0;
         memset(tuple, 0, 2000);
         prepareLargeTuple(attrs.size(), nullsIndicator, i, tuple, &size);
-
         rc = rm->insertTuple(tableName, tuple, rid);
         assert(rc == success && "RelationManager::insertTuple() should not fail.");
 
@@ -512,6 +511,9 @@ RC TEST_RM_09(const string &tableName, vector<RID> &rids, vector<int> &sizes)
         prepareLargeTuple(attrs.size(), nullsIndicator, i, tuple, &size);
         if(memcmp(returnedData, tuple, sizes[i]) != 0)
         {
+// cout<<"size: "<<sizes[i]<<endl;
+// rm->printTuple(attrs, returnedData);
+// rm->printTuple(attrs, tuple);
             cout << "***** [FAIL] Test Case 9 Failed *****" << endl << endl;
             return -1;
         }
@@ -550,8 +552,9 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
 
     // Update the first 1000 tuples
     int size = 0;
-    for(int i = 0; i < 1000; i++)
+    for(int i = 0; i < 10; i++)   //should be 1000=========================================
     {
+cout<<"updating: "<<i<<endl;
         memset(tuple, 0, 2000);
         RID rid = rids[i];
 
@@ -564,17 +567,21 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
     }
 
     // Read the updated records and check the integrity
-    for(int i = 0; i < 1000; i++)
+    for(int i = 0; i < 10; i++)                   //should be 1000===============================================
     {
 cout<<"rmtest10: "<<i<<endl;
         memset(tuple, 0, 2000);
         memset(returnedData, 0, 2000);
         prepareLargeTuple(attrs.size(), nullsIndicator, i+10, tuple, &size);
+cout<<"trying to read rid. PageNum: "<<rids[i].pageNum<<" SlotNum: "<<rids[i].slotNum<<endl;
         rc = rm->readTuple(tableName, rids[i], returnedData);
         assert(rc == success && "RelationManager::readTuple() should not fail.");
 
         if(memcmp(returnedData, tuple, sizes[i]) != 0)
         {
+cout<<"comparison failed"<<endl;
+rm->printTuple(attrs, returnedData);
+rm->printTuple(attrs, tuple);
             cout << "***** [FAIL] Test Case 10 Failed *****" << endl << endl;
             free(tuple);
             free(returnedData);

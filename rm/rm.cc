@@ -163,13 +163,15 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
     vector<Attribute> columnAttr = createColumnDescriptor();
     nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(columnAttr.size());
     free(nullsIndicator);
+
     unsigned char *newNullsIndicator = (unsigned char*)malloc(nullFieldsIndicatorActualSize);
     memset(newNullsIndicator, 0, nullFieldsIndicatorActualSize);
-
+// cout<<"createTable: "<<attrs.size()<<endl;
     for(unsigned i = 0; i<attrs.size();i++){
         prepareColumnTuple(columnAttr.size(), newNullsIndicator, numberOfTables+1, attrs[i].name.size(),attrs[i].name,
             attrs[i].type,attrs[i].length, i+1, record, &recordSize);
         insertTuple("Columns", record, rid);
+// cout<<"Inserted: "<<numberOfTables+1<<": "<<attrs[i].name<<": "<<attrs[i].type<<": "<<attrs[i].length<<endl;
         memset(record, 0, 1000);
     }
 
@@ -229,7 +231,7 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
     
     unsigned targetId = *((int*)((char*)tableIdBuffer+1));
 // cout<<"Buffer target id: "<<*((int*)((char*)tableIdBuffer+1))<<endl;
-// cout<<"targetId: "<<targetId<<endl;
+// cout<<"targetId: "<<targetId<<endl<<endl;
     rbfm_ScanIterator.close();
 
     vector<Attribute> columnDescriptor= createColumnDescriptor();
@@ -242,8 +244,10 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
 // cout<<"about to entire column scan"<<endl;
     _rbf_manager->scan(columnHandle, columnDescriptor, "table-id", EQ_OP, &targetId, attributes,attributeGetter );
 // cout<<"complete scan"<<endl;
+// int testing = 0;
     while(attributeGetter.getNextRecord(rid,gotAttribute)!=RM_EOF){
-        
+// cout<<"testing"<<endl;
+// testing++;
         Attribute add;
         int nullAttributesIndicatorActualSize = getActualByteForNullsIndicator(attributes.size());
         unsigned offset = nullAttributesIndicatorActualSize;
@@ -581,7 +585,7 @@ void RelationManager::prepareColumnTuple(int attributeCount, unsigned char *null
 	nullBit = nullAttributesIndicator[0] & (1 << 4);
 
 	if (!nullBit) {
-		memcpy((char *)buffer + offset, &columnType, sizeof(int));
+		memcpy((char *)buffer + offset, &columnLength, sizeof(int));
 		offset += sizeof(int);
 	}
 

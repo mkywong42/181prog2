@@ -195,8 +195,11 @@ int RBFM_ScanIterator::comparison(const void* attribute, const void* value, Attr
         unsigned lengthVarChar;
         // memcpy(&lengthVarChar, (char*)attribute+nullBitSize, sizeof(int));
         void* intBuffer = malloc(sizeof(int));
-        memcpy(intBuffer, (char*)attribute+nullBitSize, sizeof(int));
+        memcpy(intBuffer, (char*)data, sizeof(int));
         lengthVarChar = *((int*)intBuffer);
+// cout<<"comparing two varChars"<<endl;
+// cout<<"first varChar: "<<(char*)attribute+sizeof(int)+nullBitSize<<endl;
+// cout<<"second varChar: "<<(char*)data+sizeof(int)<<endl;
         return memcmp((unsigned char*)attribute + sizeof(int)+nullBitSize, (unsigned char*)data + sizeof(int), lengthVarChar);
     }else if( attr.type == TypeInt){
 // cout<<"comparing two ints"<<endl;
@@ -330,10 +333,11 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 
 //added
     if(recordEntry.length == 0){
-
+cout<<"read record: record is dead"<<endl;
         free(pageData);
         return RBFM_RECORD_IS_DEAD;
     }else if( recordEntry.offset <0 ){
+cout<<"read record: record is moved"<<endl;
         int tempPage = (-1)* recordEntry.offset;
         int tempSlot = recordEntry.length;
         RID temp;
@@ -341,6 +345,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
         temp.slotNum = tempSlot;
         readRecord(fileHandle,recordDescriptor, temp, data);
     }else{
+cout<<"read record:  record is alive"<<endl;
         // Retrieve the actual entry data
         getRecordAtOffset(pageData, recordEntry.offset, recordDescriptor, data);
     }
@@ -392,6 +397,7 @@ RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor
                 uint32_t varcharSize;
                 memcpy(&varcharSize, ((char*) data + offset), VARCHAR_LENGTH_SIZE);
                 offset += VARCHAR_LENGTH_SIZE;
+// cout<<"printTuple varchar size: "<<varcharSize<<endl;
 
                 // Gets the actual string.
                 char *data_string = (char*) malloc(varcharSize + 1);
@@ -723,16 +729,19 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
     SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
     if(slotHeader.recordEntriesNumber < rid.slotNum)
         return RBFM_SLOT_DN_EXIST;
+
     //3.  get the slot directory entry data
     // Gets the slot directory record entry data
     SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, rid.slotNum);   
 // 	        A. if dead then throw error
     if(recordEntry.length == 0){
+cout<<"record is dead"<<endl;
         free(pageData);
         return RBFM_RECORD_IS_DEAD;
 
     //b. if moved then repeat(recursion)
     }else if(recordEntry.offset < 0){
+cout<<"record is moved"<<endl;
         int new_pageId = (-1)*recordEntry.offset;
         int new_slotId = recordEntry.length;
         RID temp;
@@ -749,11 +758,13 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
 
         // a. new record same size
         if(newRecordSize==oldRecordSize){
+cout<<"new record is same size"<<endl;
             // -replace
             setRecordAtOffset(pageData, recordEntry.offset, recordDescriptor, data);
 
             // b. new record smaller
         }else if(newRecordSize < oldRecordSize){
+cout<<"new record is smaller"<<endl;
 // 		        -shrinking
             unsigned newOffset = compaction(fileHandle, rid, oldRecordSize - newRecordSize, pageData);
             setRecordAtOffset(pageData, newOffset, recordDescriptor, data);
@@ -766,7 +777,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
 // 		    -have enough free space
             unsigned freePageSpace = getPageFreeSpaceSize(pageData);
             if(freePageSpace >= newRecordSize){
-// cout<<"Should be here in updateRecord()"<<endl;
+cout<<"new record is bigger"<<endl;
 // 			        1. expand
                 unsigned newOffset = compaction(fileHandle, rid, oldRecordSize-newRecordSize, pageData);
 // cout<<"change: "<<(oldRecordSize-newRecordSize)<<endl;
@@ -778,6 +789,7 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
                 setSlotDirectoryRecordEntry(pageData, rid.slotNum, recordEntry);
 // 		    - don’t have enough free space
             }else{
+cout<<"in update record"<<endl;
 // 			    1. find page
 // 			    2. insert record
                 deleteRecord(fileHandle, recordDescriptor, rid);
