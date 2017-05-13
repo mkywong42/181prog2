@@ -125,7 +125,7 @@ private:
   unsigned currentPage;
   unsigned currentSlot;
   int comparison(const void* attribute, const void* value, Attribute &attr);
-  void insertion(void* data, RID rid, unsigned index);
+  void insertion(void* data, RID rid);
 };
 
 
