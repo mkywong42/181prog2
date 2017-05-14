@@ -498,62 +498,7 @@ int RBFTest_8(RecordBasedFileManager *rbfm)
     // Given the rid, read the record from file
     rc = rbfm->readRecord(fileHandle, recordDescriptor, rid, returnedData);
     assert(rc == success && "Reading a record should not fail.");
-//added
-void* newUpdateRecord = malloc(100);
-void* recordResult = malloc(100);
-memset(nullsIndicator, 255, nullFieldsIndicatorActualSize);
-prepareRecord(recordDescriptor.size(), nullsIndicator, 4, "Newt", 30, 200.4, 7000, newUpdateRecord, &recordSize);
-cout << endl << "Inserting Data:" << endl;
-rbfm->printRecord(recordDescriptor, newUpdateRecord);
-    
-// rbfm ->deleteRecord(fileHandle, recordDescriptor, rid);
-// rc = rbfm->updateRecord(fileHandle, recordDescriptor, newUpdateRecord, rid);
-// assert(rc == success && "Inserting a record should not fail.");
-    
-// rbfm->readAttribute(fileHandle, recordDescriptor, rid, "Age", recordResult);
-// cout<<((char*)recordResult)<<endl;
 
-RBFM_ScanIterator scanner;
-// int testSalary =7000;
-string attr = "Salary";
-vector<string> attributes;
-attributes.push_back(attr);
-unsigned newNullBitOffset = getActualByteForNullsIndicator(attributes.size());
-rbfm->scan(fileHandle, recordDescriptor, "", NO_OP, NULL,attributes,scanner );
-while(scanner.getNextRecord(rid, returnedData) != RBFM_EOF)
-    {
-            int offset = 0;
-
-            // cout << "NULL Value: " << ((char *)returnedData) << endl;
-            // offset += 4;
-
-            cout << "Real Value: " << *(int *)((char *)returnedData+newNullBitOffset) << endl;
-            offset += 4;
-        
-            // int size = *(int *)((char *)returnedData + offset + nullAttributesIndicatorActualSize);
-            // cout << "Varchar size: " << size << endl;
-            // offset += 4;
-
-            // char *buffer = (char *)malloc(size + 1);
-            // memcpy(buffer, (char *)returnedData + offset + nullAttributesIndicatorActualSize, size);
-            // buffer[size] = 0;
-            // offset += size;
-    
-            // cout << "VarChar Value: " << buffer << endl;
-
-            // cout << "Integer Value: " << *(int *)((char *)returnedData + offset + nullAttributesIndicatorActualSize) << endl << endl;
-            // offset += 4;
-
-            // free(buffer);
-        // j++;
-        // memset(returnedData, 0, 2000);
-    }
-    scanner.close();
-
-// Given the rid, read the record from file
-rc = rbfm->readRecord(fileHandle, recordDescriptor, rid, returnedData);
-assert(rc == success && "Reading a record should not fail.");
-//end added
     cout << endl << "Returned Data:" << endl;
     rbfm->printRecord(recordDescriptor, returnedData);
 

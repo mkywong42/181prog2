@@ -3,8 +3,8 @@ Team Number : 29
 Student ID# of Submitter: 1474026
 Name of Submitter: Michael Wong
 ID#s and Names for others on the Team
-    Chad Aldrich
-    Tiffany Lee
+1296421    Chad Aldrich
+1480314    Tiffany Lee
 
 2. Meta-data
 - Show your meta-data design (Tables and Columns table) and information about each column.
