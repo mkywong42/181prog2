@@ -174,7 +174,7 @@ void RBFM_ScanIterator::insertion(void* newData, RID rid){
 // cout<<"Insertion: inserting a varChar"<<endl;
             unsigned lengthVarChar;
             memcpy(&lengthVarChar, (char*)buffer+recordOffset, sizeof(int));
-cout<<"insertion length VarChar: "<<lengthVarChar<<endl;
+// cout<<"insertion length VarChar: "<<lengthVarChar<<endl;
             memcpy((char*)newData+offset, (char*)buffer+recordOffset,sizeof(int));
             offset+=sizeof(int);
             recordOffset+=sizeof(int);
