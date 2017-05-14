@@ -43,7 +43,8 @@ ID#s and Names for others on the Team
     followed by the data "Anteater"
 
 - Describe how you deal with an update and delete.
-
+    An updated record is overwritten completely.  If necessary there can be a way to update or update individual fields of the record
+    but currently there is no function to do so.
 
 4. Page Format
 - Show your page format design.
@@ -57,15 +58,20 @@ ID#s and Names for others on the Team
     For either case we first check if the record is dead, moved or alive.
     For both update and delete we have a helper function, compaction(), that moves all the records after the record a certain
     distance and updates the slot directory with the appropriate offsets.  For deletion, compaction moves all the records
-    after the record to be deleted 
+    after the record to be deleted a distance equal to the length of the record being deleted.  For update the distance that these
+    records move is based on the difference between the lengths of the old record and the updated record.  If a record is updated
+    and cannot fit on the page then the old record is deleted from the page and the updated record is inserted into the first page
+    that has enough free space for it.  Then the slot directory on the original page is updated with the forwarding address which
+    consists of the offset which is the negative of the new page number and the length which is the slot number of the updated record.
 
 5. File Format
 - Show your file format design
-
-
+    Our file is comprised of many pages that are all filled with the page header, slot directory, records and free space.  Because 
+    all these pages are in the same file, they are actually just blocks of memory, 4096 bytes each.  This means that byte 4097 of
+    one page can be byte 0 of the next page.
 
 6. Implementation Detail
-- Other implementation details goes here.
+    Tests 1-11,14,15 work
 
 
 7. Other (optional)

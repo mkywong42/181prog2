@@ -34,7 +34,7 @@ public:
   RC getNextTuple(RID &rid, void *data);
   RC close();
   RBFM_ScanIterator scanner;
-  // FileHandle fileHandle;
+  FileHandle fileHandle;
 private:
   static RecordBasedFileManager *_rbf_manager;
   

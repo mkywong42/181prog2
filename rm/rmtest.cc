@@ -551,7 +551,7 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
 
     // Update the first 1000 tuples
     int size = 0;
-    for(int i = 0; i < 1000; i++)   //changed====================
+    for(int i = 0; i < 1000; i++)   
     {
 // cout<<"Trying to update   PageNum: "<<rids[i].pageNum<<"  SlotNum: "<<rids[i].slotNum<<endl;
         memset(tuple, 0, 2000);
@@ -565,7 +565,7 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
     }
 
     // Read the updated records and check the integrity
-    for(int i = 0; i < 1000; i++)               //changed===========================    
+    for(int i = 0; i < 1000; i++)                   
     {
 // cout<<"Trying to read   PageNum: "<<rids[i].pageNum<<"  SlotNum: "<<rids[i].slotNum<<endl;
         memset(tuple, 0, 2000);

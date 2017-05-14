@@ -38,10 +38,7 @@ int main()
   remove("tbl_employee4");
 
   rc = createLargeTable("tbl_employee4");
-//added
-// cout<<"=============================================================Starting here=============================================="<<endl;
-// vector<Attribute> test;
-// rm->getAttributes("tbl_employee4", test);
+
   assert (rc == success && "Creating a table should not fail.");
 
   return success;

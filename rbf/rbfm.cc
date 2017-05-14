@@ -38,7 +38,6 @@ RC RBFM_ScanIterator::close(){
 
 RC RBFM_ScanIterator::getNextRecord(RID &rid, void* data)
 {      
-// cout<<"==================In get next Record==========================="<<endl;
     RID temp;
     unsigned i;
     void* record = malloc(1000);
@@ -121,7 +120,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void* data)
                     insertion(data, temp);
                     rid = temp;
                     currentSlot++;
-                    free(record);
+                    // free(record);
                     return SUCCESS;
             }
             currentSlot++;
@@ -175,6 +174,7 @@ void RBFM_ScanIterator::insertion(void* newData, RID rid){
 // cout<<"Insertion: inserting a varChar"<<endl;
             unsigned lengthVarChar;
             memcpy(&lengthVarChar, (char*)buffer+recordOffset, sizeof(int));
+cout<<"insertion length VarChar: "<<lengthVarChar<<endl;
             memcpy((char*)newData+offset, (char*)buffer+recordOffset,sizeof(int));
             offset+=sizeof(int);
             recordOffset+=sizeof(int);
@@ -188,7 +188,7 @@ void RBFM_ScanIterator::insertion(void* newData, RID rid){
             offset+=sizeof(int);
         }
     }
-    free(buffer);
+    // free(buffer);
     free(nullsIndicator);
 }
 
@@ -881,7 +881,7 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
     void* rData;
 
     if(recordEntry.state == 0){
-        free(rData);
+        // free(rData);
         free(pageData);
         return 0;
     }else if( recordEntry.state == 1 ){

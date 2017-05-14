@@ -9,7 +9,7 @@ RecordBasedFileManager *RelationManager::_rbf_manager = NULL;
 RM_ScanIterator::RM_ScanIterator()
 {
     _rbf_manager = RecordBasedFileManager::instance();
-    // FileHandle fileHandle;
+    FileHandle fileHandle;
     //need initialization
 }
 
@@ -18,27 +18,27 @@ RM_ScanIterator::~RM_ScanIterator()
 }
 
 RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
-    FileHandle tableHandle;
-    if(_rbf_manager->openFile("Tables",tableHandle)) {      
-         return RM_OPEN_FILE_FAIL;
-    }   
+    // FileHandle tableHandle;
+    // if(_rbf_manager->openFile("Tables",tableHandle)) {      
+    //      return RM_OPEN_FILE_FAIL;
+    // }   
 
-    FileHandle columnHandle;
-    if(_rbf_manager->openFile("Columns", columnHandle))
-        return RM_OPEN_FILE_FAIL;
+    // FileHandle columnHandle;
+    // if(_rbf_manager->openFile("Columns", columnHandle))
+    //     return RM_OPEN_FILE_FAIL;
 
 
     if(scanner.getNextRecord(rid, data) == RBFM_EOF){
-        if(_rbf_manager->closeFile(tableHandle))
-            return RM_FILE_CLOSE_FAIL;
-        if(_rbf_manager->closeFile(columnHandle))
-            return RM_FILE_CLOSE_FAIL;
+        // if(_rbf_manager->closeFile(tableHandle))
+        //     return RM_FILE_CLOSE_FAIL;
+        // if(_rbf_manager->closeFile(columnHandle))
+        //     return RM_FILE_CLOSE_FAIL;
         return RM_EOF;
     }else{
-        if(_rbf_manager->closeFile(tableHandle))
-            return RM_FILE_CLOSE_FAIL;
-        if(_rbf_manager->closeFile(columnHandle))
-            return RM_FILE_CLOSE_FAIL;
+        // if(_rbf_manager->closeFile(tableHandle))
+        //     return RM_FILE_CLOSE_FAIL;
+        // if(_rbf_manager->closeFile(columnHandle))
+        //     return RM_FILE_CLOSE_FAIL;
         return SUCCESS;
     }
 }
@@ -130,6 +130,7 @@ RC RelationManager::createCatalog()
     for(unsigned i =0; i<columnAttr.size();i++){
         prepareColumnTuple(columnAttr.size(), newNullsIndicator, 2, columnAttr[i].name.size(),columnAttr[i].name,
             columnAttr[i].type,columnAttr[i].length, i+1, record, &recordSize);
+// cout<<"tableAttr Name: "<<columnAttr[i].name<<"     size of name: "<<columnAttr[i].name.size()<<endl;
         _rbf_manager->insertRecord(columnHandle, columnAttr, record, rid);
         memset(record, 0, 1000);
     }
@@ -146,10 +147,10 @@ RC RelationManager::createCatalog()
 
 RC RelationManager::deleteCatalog()
 {
-    if(deleteTable("Tables"))
+    if(_rbf_manager->destroyFile("Tables"))
         return RM_DELETE_TABLE_FAIL;
 
-    if(deleteTable("Columns"))
+    if(_rbf_manager->destroyFile("Columns"))
         return RM_DELETE_TABLE_FAIL;
 
     return SUCCESS;
@@ -157,10 +158,12 @@ RC RelationManager::deleteCatalog()
 
 RC RelationManager::createTable(const string &tableName, const vector<Attribute> &attrs)
 {
-// cout<<"Entering CreateTable"<<endl;
+
 //create the table
-    if(_rbf_manager->createFile(tableName))
+    if(_rbf_manager->createFile(tableName)){
+cout<<"Entering CreateTable"<<endl;
         return RM_CREATE_TABLE_FAIL;
+    }
 
     void * record= malloc(1000);
     int recordSize = 0;
@@ -200,18 +203,9 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
 
 RC RelationManager::deleteTable(const string &tableName)
 {
-    // if(tableName =="Tables" || tableName =="Columns")        //may be wrong------------------------
-    //     return RM_SYSTEM_CATALOG_ACCESS;
+    if(tableName =="Tables" || tableName =="Columns")        //may be wrong------------------------
+        return RM_SYSTEM_CATALOG_ACCESS;
     return _rbf_manager ->destroyFile(tableName);
-
-    // FileHandle fileHandle;
-    // if(_rbf_manager->openFile(tableName, fileHandle))
-    //     return RM_OPEN_FILE_FAIL;
-    // vector<Attribute> attr;
-    // getAttributes(tableName, attr);
-    // if(_rbf_manager->insertRecord(fileHandle, attr, data, rid))
-    //     return RM_INSERT_RECORD_FAIL;
-    // return SUCCESS;
 }
 
 RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &attrs)
@@ -296,15 +290,17 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
         memcpy(&lengthVarChar, (char*)gotAttribute + offset, sizeof(int));
 // cout<<"find attributes length VarChar: "<<lengthVarChar<<endl;
         offset+=sizeof(int);
-        void* varCharBuffer = malloc(lengthVarChar);
-        memcpy((char*)varCharBuffer, (char*)gotAttribute + offset, lengthVarChar);
-// char testArray[lengthVarChar+1];
-// memcpy(testArray, (char*)varCharBuffer, lengthVarChar);
-// testArray[lengthVarChar] = '\0';
+        // void* varCharBuffer = malloc(lengthVarChar);
+        // memcpy((char*)varCharBuffer, (char*)gotAttribute + offset, lengthVarChar);
+        char testArray[lengthVarChar+1];
+        memcpy(testArray, (char*)gotAttribute+offset, lengthVarChar);
+        testArray[lengthVarChar] = '\0';
 // cout<<"find attributes var char value: "<<testArray<<endl;
-        add.name = (char*)varCharBuffer;
+        // add.name = (char*)varCharBuffer;
+        add.name=testArray;
         
         attrs.push_back(add);
+// cout<<add.name<<endl;
         // free(varCharBuffer);
     }
     if(_rbf_manager->closeFile(tableHandle))
@@ -407,13 +403,13 @@ RC RelationManager::scan(const string &tableName,
       const vector<string> &attributeNames,
       RM_ScanIterator &rm_ScanIterator)
 {
-    FileHandle fileHandle;
-    if(_rbf_manager->openFile(tableName,fileHandle))
+    // FileHandle fileHandle;
+    if(_rbf_manager->openFile(tableName,rm_ScanIterator.fileHandle))
         return RM_OPEN_FILE_FAIL;
     vector<Attribute> attr;
 // cout<<"scan: about to getAttributes"<<endl;
     getAttributes(tableName, attr);
-    _rbf_manager->scan(fileHandle, attr,conditionAttribute,compOp,value,attributeNames,rm_ScanIterator.scanner);
+    _rbf_manager->scan(rm_ScanIterator.fileHandle, attr,conditionAttribute,compOp,value,attributeNames,rm_ScanIterator.scanner);
     // if(_rbf_manager->closeFile(fileHandle))
     //     return RM_FILE_CLOSE_FAIL;
     return SUCCESS;
