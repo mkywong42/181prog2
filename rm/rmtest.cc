@@ -1045,15 +1045,15 @@ int main()
     rcmain = TEST_RM_11("tbl_employee4", rids4);
     
     // Scan
-    // rcmain = TEST_RM_12("tbl_employee4");
+    rcmain = TEST_RM_12("tbl_employee4");
 
-    // // Scan with conditions
-    // rcmain = createTable("tbl_b_employee4");
-    // rcmain = TEST_RM_13("tbl_b_employee4");
+    // Scan with conditions
+    rcmain = createTable("tbl_b_employee4");
+    rcmain = TEST_RM_13("tbl_b_employee4");
 
-	// // Scan with conditions
-    // rcmain = createTable("tbl_b_employee5");
-    // rcmain = TEST_RM_13b("tbl_b_employee5");
+	// Scan with conditions
+    rcmain = createTable("tbl_b_employee5");
+    rcmain = TEST_RM_13b("tbl_b_employee5");
 
     // NOTE: your Tables table must be called "Tables"
     string catalog_table_name = "Tables";
