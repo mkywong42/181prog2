@@ -77,6 +77,7 @@ typedef struct SlotDirectoryRecordEntry
 {
     uint32_t length; 
     int32_t offset;
+    uint32_t state;     //0 for dead, 1 for moved, 2 for alive
 } SlotDirectoryRecordEntry;
 
 typedef SlotDirectoryRecordEntry* SlotDirectory;
@@ -111,7 +112,7 @@ public:
   // a satisfying record needs to be fetched from the file.
   // "data" follows the same format as RecordBasedFileManager::insertRecord().
   RC getNextRecord(RID &rid, void *data);
-  RC close() { return -1; };
+  RC close();
 
   static RecordBasedFileManager *_rbf_manager;
   FileHandle fileHandle;

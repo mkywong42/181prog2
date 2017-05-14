@@ -364,8 +364,10 @@ RC TEST_RM_6(const string &tableName)
     assert(rc == success && "RelationManager::scan() should not fail.");
     
     nullAttributesIndicatorActualSize = getActualByteForNullsIndicator(attributes.size());
+// cout<<"entering loop"<<endl;
     while(rmsi.getNextTuple(rid, returnedData) != RM_EOF)
     {
+// cout<<"Test 6: PageNum: "<<rid.pageNum<<" SlotNum: "<<rid.slotNum<<endl;
         // cout << "Returned Age: " << *(int *)((char *)returnedData+nullAttributesIndicatorActualSize) << endl;
         if (ages.find(*(int *)((char *)returnedData+nullAttributesIndicatorActualSize)) == ages.end())
         {
@@ -511,9 +513,6 @@ RC TEST_RM_09(const string &tableName, vector<RID> &rids, vector<int> &sizes)
         prepareLargeTuple(attrs.size(), nullsIndicator, i, tuple, &size);
         if(memcmp(returnedData, tuple, sizes[i]) != 0)
         {
-// cout<<"size: "<<sizes[i]<<endl;
-// rm->printTuple(attrs, returnedData);
-// rm->printTuple(attrs, tuple);
             cout << "***** [FAIL] Test Case 9 Failed *****" << endl << endl;
             return -1;
         }
@@ -552,12 +551,11 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
 
     // Update the first 1000 tuples
     int size = 0;
-    for(int i = 0; i < 10; i++)   //should be 1000=========================================
+    for(int i = 0; i < 1000; i++)   //changed====================
     {
-cout<<"updating: "<<i<<endl;
+// cout<<"Trying to update   PageNum: "<<rids[i].pageNum<<"  SlotNum: "<<rids[i].slotNum<<endl;
         memset(tuple, 0, 2000);
         RID rid = rids[i];
-
         prepareLargeTuple(attrs.size(), nullsIndicator, i+10, tuple, &size);
         rc = rm->updateTuple(tableName, tuple, rid);
         assert(rc == success && "RelationManager::updateTuple() should not fail.");
@@ -567,21 +565,17 @@ cout<<"updating: "<<i<<endl;
     }
 
     // Read the updated records and check the integrity
-    for(int i = 0; i < 10; i++)                   //should be 1000===============================================
+    for(int i = 0; i < 1000; i++)               //changed===========================    
     {
-cout<<"rmtest10: "<<i<<endl;
+// cout<<"Trying to read   PageNum: "<<rids[i].pageNum<<"  SlotNum: "<<rids[i].slotNum<<endl;
         memset(tuple, 0, 2000);
         memset(returnedData, 0, 2000);
         prepareLargeTuple(attrs.size(), nullsIndicator, i+10, tuple, &size);
-cout<<"trying to read rid. PageNum: "<<rids[i].pageNum<<" SlotNum: "<<rids[i].slotNum<<endl;
         rc = rm->readTuple(tableName, rids[i], returnedData);
         assert(rc == success && "RelationManager::readTuple() should not fail.");
 
         if(memcmp(returnedData, tuple, sizes[i]) != 0)
         {
-cout<<"comparison failed"<<endl;
-rm->printTuple(attrs, returnedData);
-rm->printTuple(attrs, tuple);
             cout << "***** [FAIL] Test Case 10 Failed *****" << endl << endl;
             free(tuple);
             free(returnedData);
@@ -610,12 +604,18 @@ RC TEST_RM_11(const string &tableName, vector<RID> &rids)
     void * returnedData = malloc(2000);
     
     readRIDsFromDisk(rids, numTuples);
-
+vector<Attribute> attrs;
+rc = rm->getAttributes(tableName, attrs);
     // Delete the first 1000 tuples
-    for(int i = 0; i < 1000; i++)
+    for(int i = 0; i < 1000; i++)               
     {
+// cout<<"rmtest11: "<<i<<endl;
+// cout<<"Trying to delete   PageNum: "<<rids[i].pageNum<<"  SlotNum: "<<rids[i].slotNum<<endl;
         rc = rm->deleteTuple(tableName, rids[i]);
         assert(rc == success && "RelationManager::deleteTuple() should not fail.");
+// rc = rm->readTuple(tableName, rids[i], returnedData);
+// rm->printTuple(attrs, returnedData);
+// assert(rc != success && "RelationManager::readTuple() on a deleted tuple should fail.");
     }
 
     // Try to read the first 1000 deleted tuples
@@ -627,6 +627,8 @@ RC TEST_RM_11(const string &tableName, vector<RID> &rids)
 
     for(int i = 1000; i < 2000; i++)
     {
+// cout<<"rmtest read: "<<i<<endl;
+// cout<<"Trying to read   PageNum: "<<rids[i].pageNum<<"  SlotNum: "<<rids[i].slotNum<<endl;
         rc = rm->readTuple(tableName, rids[i], returnedData);
         assert(rc == success && "RelationManager::readTuple() should not fail.");
     }

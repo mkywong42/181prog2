@@ -32,8 +32,9 @@ public:
 
   // "data" follows the same format as RelationManager::insertTuple()
   RC getNextTuple(RID &rid, void *data);
-  RC close() { return -1; };
+  RC close();
   RBFM_ScanIterator scanner;
+  // FileHandle fileHandle;
 private:
   static RecordBasedFileManager *_rbf_manager;
   

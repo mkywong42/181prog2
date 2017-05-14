@@ -32,6 +32,10 @@ RBFM_ScanIterator::~RBFM_ScanIterator()
 {
 }
 
+RC RBFM_ScanIterator::close(){
+    return -1;
+}
+
 RC RBFM_ScanIterator::getNextRecord(RID &rid, void* data)
 {      
 // cout<<"==================In get next Record==========================="<<endl;
@@ -194,9 +198,10 @@ int RBFM_ScanIterator::comparison(const void* attribute, const void* value, Attr
     if(attr.type == TypeVarChar){
         unsigned lengthVarChar;
         // memcpy(&lengthVarChar, (char*)attribute+nullBitSize, sizeof(int));
-        void* intBuffer = malloc(sizeof(int));
+        void* intBuffer = malloc(sizeof(int));                  //need to free//////////////////////////////
         memcpy(intBuffer, (char*)data, sizeof(int));
         lengthVarChar = *((int*)intBuffer);
+        free(intBuffer);
 // cout<<"comparing two varChars"<<endl;
 // cout<<"first varChar: "<<(char*)attribute+sizeof(int)+nullBitSize<<endl;
 // cout<<"second varChar: "<<(char*)data+sizeof(int)<<endl;
@@ -290,6 +295,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
     SlotDirectoryRecordEntry newRecordEntry;
     newRecordEntry.length = recordSize;
     newRecordEntry.offset = slotHeader.freeSpaceOffset - recordSize;
+    newRecordEntry.state = 2;
     setSlotDirectoryRecordEntry(pageData, rid.slotNum, newRecordEntry);
 
     // Updating the slot directory header.
@@ -311,6 +317,14 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
         if (fileHandle.appendPage(pageData))
             return RBFM_APPEND_FAILED;
     }
+// void * pageTest = malloc(PAGE_SIZE);
+// if (fileHandle.readPage(rid.pageNum, pageTest))
+//         return RBFM_READ_FAILED;
+// SlotDirectoryRecordEntry test = getSlotDirectoryRecordEntry(pageTest, rid.slotNum);
+// SlotDirectoryHeader slotHeaderTest = getSlotDirectoryHeader(pageTest);
+// if(slotHeaderTest.freeSpaceOffset > test.offset && test.offset>0){
+//     return -1;
+// }
 
     free(pageData);
     return SUCCESS;
@@ -318,26 +332,27 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data) 
 {
+// cout<<"entering read Record"<<endl;
     // Retrieve the specific page
     void * pageData = malloc(PAGE_SIZE);
     if (fileHandle.readPage(rid.pageNum, pageData))
         return RBFM_READ_FAILED;
-
+// cout<<"readRecord readpage is successful"<<endl;
     // Checks if the specific slot id exists in the page
     SlotDirectoryHeader slotHeader = getSlotDirectoryHeader(pageData);
     if(slotHeader.recordEntriesNumber < rid.slotNum)
         return RBFM_SLOT_DN_EXIST;
-
+// cout<<"read record slot dne"<<endl;
     // Gets the slot directory record entry data
     SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
 
 //added
-    if(recordEntry.length == 0){
-cout<<"read record: record is dead"<<endl;
+    if(recordEntry.state == 0){
+// cout<<"read record: record is dead"<<endl;
         free(pageData);
         return RBFM_RECORD_IS_DEAD;
     }else if( recordEntry.offset <0 ){
-cout<<"read record: record is moved"<<endl;
+// cout<<"read record: record is moved"<<endl;
         int tempPage = (-1)* recordEntry.offset;
         int tempSlot = recordEntry.length;
         RID temp;
@@ -345,7 +360,7 @@ cout<<"read record: record is moved"<<endl;
         temp.slotNum = tempSlot;
         readRecord(fileHandle,recordDescriptor, temp, data);
     }else{
-cout<<"read record:  record is alive"<<endl;
+// cout<<"read record:  record is alive"<<endl;
         // Retrieve the actual entry data
         getRecordAtOffset(pageData, recordEntry.offset, recordDescriptor, data);
     }
@@ -687,12 +702,13 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const vector<Att
     //getRecordAtOffset(pageData, recordEntry.offset, recordDescriptor, data);
 
     // 4.  if dead then do nothing
-    if(recordEntry.length == 0){
+    if(recordEntry.state == 0){
         free(pageData);
         return 0;
         
     // 5.  if moved then
-    }else if(recordEntry.offset < 0){
+    }else if(recordEntry.state == 1){
+// cout<<"entry was moved"<<endl;
 	//     a. detected
         int new_pageId = (-1)*recordEntry.offset;
         int new_slotId = recordEntry.length;
@@ -701,16 +717,34 @@ RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const vector<Att
         temp.slotNum = new_slotId;
     //     b. repeat delete (recursion)
         deleteRecord(fileHandle, recordDescriptor, temp);
-	//     c. compaction
+	//     c. change current state
+        SlotDirectoryRecordEntry tempSlot;
+        tempSlot.state = 0;
+        tempSlot.length = 0;
+        tempSlot.offset = 0;
+        setSlotDirectoryRecordEntry(pageData, rid.slotNum, tempSlot);
+        if (fileHandle.writePage(rid.pageNum, pageData))
+            return RBFM_WRITE_FAILED;
 
     // 6.  if alive then
     }else{
 	//     b. compaction
         compaction(fileHandle, rid, recordEntry.length, pageData);
+        SlotDirectoryRecordEntry temp;
+        temp.state = 0;
+        temp.length = 0;
+        temp.offset = 0;
+        setSlotDirectoryRecordEntry(pageData, rid.slotNum, temp);
+        slotHeader.freeSpaceOffset+=recordEntry.length;
+        setSlotDirectoryHeader(pageData, slotHeader);
         if (fileHandle.writePage(rid.pageNum, pageData))
             return RBFM_WRITE_FAILED;
     }
-
+// void * pageTest = malloc(PAGE_SIZE);
+// if (fileHandle.readPage(rid.pageNum, pageTest))
+//         return RBFM_READ_FAILED;
+// SlotDirectoryRecordEntry test = getSlotDirectoryRecordEntry(pageTest, rid.slotNum);
+// cout<<"Deleting: state: "<<test.state<<endl<<endl;
     free(pageData);
     return 0;
 
@@ -734,14 +768,14 @@ RC RecordBasedFileManager::updateRecord(FileHandle &fileHandle, const vector<Att
     // Gets the slot directory record entry data
     SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, rid.slotNum);   
 // 	        A. if dead then throw error
-    if(recordEntry.length == 0){
-cout<<"record is dead"<<endl;
+    if(recordEntry.state == 0){
+// cout<<"record is dead"<<endl;
         free(pageData);
         return RBFM_RECORD_IS_DEAD;
 
     //b. if moved then repeat(recursion)
-    }else if(recordEntry.offset < 0){
-cout<<"record is moved"<<endl;
+    }else if(recordEntry.state == 1){
+// cout<<"record is moved"<<endl;
         int new_pageId = (-1)*recordEntry.offset;
         int new_slotId = recordEntry.length;
         RID temp;
@@ -758,26 +792,28 @@ cout<<"record is moved"<<endl;
 
         // a. new record same size
         if(newRecordSize==oldRecordSize){
-cout<<"new record is same size"<<endl;
+// cout<<"new record is same size"<<endl;
             // -replace
             setRecordAtOffset(pageData, recordEntry.offset, recordDescriptor, data);
 
             // b. new record smaller
         }else if(newRecordSize < oldRecordSize){
-cout<<"new record is smaller"<<endl;
+// cout<<"new record is smaller"<<endl;
 // 		        -shrinking
             unsigned newOffset = compaction(fileHandle, rid, oldRecordSize - newRecordSize, pageData);
             setRecordAtOffset(pageData, newOffset, recordDescriptor, data);
             recordEntry.offset = newOffset;
             recordEntry.length = newRecordSize;
             setSlotDirectoryRecordEntry(pageData, rid.slotNum, recordEntry);
+            slotHeader.freeSpaceOffset+=oldRecordSize-newRecordSize;
+            setSlotDirectoryHeader(pageData, slotHeader);
       
 // 	        c. new record bigger
         }else{
 // 		    -have enough free space
-            unsigned freePageSpace = getPageFreeSpaceSize(pageData);
-            if(freePageSpace >= newRecordSize){
-cout<<"new record is bigger"<<endl;
+            int freePageSpace = getPageFreeSpaceSize(pageData);
+            if(freePageSpace >= newRecordSize-oldRecordSize){
+// cout<<"new record is bigger"<<endl;
 // 			        1. expand
                 unsigned newOffset = compaction(fileHandle, rid, oldRecordSize-newRecordSize, pageData);
 // cout<<"change: "<<(oldRecordSize-newRecordSize)<<endl;
@@ -787,9 +823,12 @@ cout<<"new record is bigger"<<endl;
                 recordEntry.offset = newOffset;
                 recordEntry.length = newRecordSize;
                 setSlotDirectoryRecordEntry(pageData, rid.slotNum, recordEntry);
+                slotHeader.freeSpaceOffset+=(oldRecordSize - newRecordSize);
+                setSlotDirectoryHeader(pageData, slotHeader);
 // 		    - don’t have enough free space
             }else{
-cout<<"in update record"<<endl;
+// cout<<"free space: "<<freePageSpace<<endl;
+// cout<<"new record size: "<<newRecordSize<<endl;
 // 			    1. find page
 // 			    2. insert record
                 deleteRecord(fileHandle, recordDescriptor, rid);
@@ -799,13 +838,25 @@ cout<<"in update record"<<endl;
 //              3. update forwarding address
                 recordEntry.offset = temp.pageNum * -1;
                 recordEntry.length = temp.slotNum;
+                recordEntry.state = 1;
                 setSlotDirectoryRecordEntry(pageData, rid.slotNum, recordEntry);
             }
         }
         if (fileHandle.writePage(rid.pageNum, pageData))
             return RBFM_WRITE_FAILED;
 
+// void * pageTest = malloc(PAGE_SIZE);
+// if (fileHandle.readPage(rid.pageNum, pageTest))
+//         return RBFM_READ_FAILED;
+// SlotDirectoryRecordEntry test = getSlotDirectoryRecordEntry(pageTest, rid.slotNum);
+// cout<<"stored offset: "<<test.offset<<endl;
+// cout<<"stored length: "<<test.length<<endl<<endl;;
+// SlotDirectoryHeader slotHeaderTest = getSlotDirectoryHeader(pageTest);
+// if(slotHeaderTest.freeSpaceOffset > test.offset && test.offset>0){
+//     return -1;
+// }
     }
+    free(pageData);
     return 0;
 
 }
@@ -826,12 +877,14 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
     // Gets the slot directory record entry data
     SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
 
-    void* rData = malloc(1000);
+    // void* rData=malloc(2000);
+    void* rData;
 
-    if(recordEntry.length == 0){
+    if(recordEntry.state == 0){
+        free(rData);
         free(pageData);
         return 0;
-    }else if( recordEntry.offset <0 ){
+    }else if( recordEntry.state == 1 ){
         int tempPage = (-1)* recordEntry.offset;
         int tempSlot = recordEntry.length;
         RID temp;
@@ -888,7 +941,7 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
         memcpy((char*)data, nullIndicator, nullIndicatorSize);
         memcpy((char*)data+nullIndicatorSize, ((char*)nullString), 4);
         free(pageData);
-        free(rData);
+        // free(rData);
         return 0;
     }
 // cout<<"getAttribute offset: "<<offset<<endl;
@@ -908,11 +961,12 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
         memcpy((char*)data + insertOffset, (char*)rData+offset, varCharSize);
     }else{      //if record is not a VarChar then copy value into data
         memcpy((char*)data +insertOffset, (char*)rData+offset,recordDescriptor[i].length);
-// cout<<"Int Value in getAttributes"<<*((int*)((char*)data+insertOffset))<<endl;
+// cout<<"Stored int value: "<<(char*)rData+offset<<endl;
+// cout<<"Int Value in getAttributes: "<<*((int*)((char*)data+insertOffset))<<endl;
     }
 
     free(pageData);
-    free(rData);
+    // free(rData);
     return 0;
 }
 
@@ -971,19 +1025,28 @@ unsigned RecordBasedFileManager::compaction(FileHandle &fileHandle, const RID &r
     SlotDirectoryRecordEntry recordEntry = getSlotDirectoryRecordEntry(pageData, rid.slotNum);
 
     unsigned movingBlockSize = recordEntry.offset - slotDirectoryHeader.freeSpaceOffset;
+// cout<<"compaction: length: "<<recordEntry.length<<endl;
+// cout<<"compaction: offset: "<<recordEntry.offset<<endl;
+// cout<<"compaction: state: "<<recordEntry.state<<endl;
+// cout<<"compaction: freespaceoffset: "<<slotDirectoryHeader.freeSpaceOffset<<endl;
+// cout<<"movingBlockSize: "<<movingBlockSize<<endl;
     unsigned newOffset = recordEntry.offset + change;
+// cout<<"newOffset: "<<newOffset<<endl;
+// cout<<"compaction: change: "<<change<<endl<<endl;
     memmove((char*)pageData+slotDirectoryHeader.freeSpaceOffset+change,
         (char*)pageData+slotDirectoryHeader.freeSpaceOffset,movingBlockSize);
-    for(int i = rid.slotNum+1; i<slotDirectoryHeader.recordEntriesNumber;i++){
+    for(unsigned i = rid.slotNum+1; i<slotDirectoryHeader.recordEntriesNumber;i++){
         SlotDirectoryRecordEntry temp = getSlotDirectoryRecordEntry(pageData, i);
-        temp.offset += change;
-        setSlotDirectoryRecordEntry(pageData, i, temp);
+        if(temp.state != 0 || temp.state != 1){
+            temp.offset += change;
+            setSlotDirectoryRecordEntry(pageData, i, temp);
+        }
     }
-    recordEntry.length -= change;
-    setSlotDirectoryRecordEntry(pageData, rid.slotNum, recordEntry);
+    // recordEntry.length -= change;
+    // setSlotDirectoryRecordEntry(pageData, rid.slotNum, recordEntry);
 
-    slotDirectoryHeader.freeSpaceOffset+=change;
-    setSlotDirectoryHeader(pageData, slotDirectoryHeader);
+    // slotDirectoryHeader.freeSpaceOffset+=change;
+    // setSlotDirectoryHeader(pageData, slotDirectoryHeader);
 
     return newOffset;
 }

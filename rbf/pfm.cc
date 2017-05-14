@@ -5,6 +5,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <errno.h>
+
 #include "pfm.h"
 
 PagedFileManager* PagedFileManager::_pf_manager = NULL;
@@ -57,15 +59,16 @@ RC PagedFileManager::destroyFile(const string &fileName)
 
 RC PagedFileManager::openFile(const string &fileName, FileHandle &fileHandle)
 {
+    errno = 0;
     // If this handle already has an open file, error
     if (fileHandle.getfd() != NULL){
-cout<<"pfm handle in use"<<endl;
+cout<<"file already open"<<endl;
         return PFM_HANDLE_IN_USE;
     }
 
     // If the file doesn't exist, error
     if (!fileExists(fileName.c_str())){
-cout<<"pfm file dn exist"<<endl;
+cout<<"file dne"<<endl;
         return PFM_FILE_DN_EXIST;
     }
     // Open the file for reading/writing in binary mode
@@ -73,6 +76,7 @@ cout<<"pfm file dn exist"<<endl;
     pFile = fopen(fileName.c_str(), "rb+");
     // If we fail, error
     if (pFile == NULL){
+cout<<errno<<endl;
 cout<<"file is null"<<endl;
         return PFM_OPEN_FAILED;
     }

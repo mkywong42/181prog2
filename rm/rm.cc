@@ -9,6 +9,7 @@ RecordBasedFileManager *RelationManager::_rbf_manager = NULL;
 RM_ScanIterator::RM_ScanIterator()
 {
     _rbf_manager = RecordBasedFileManager::instance();
+    // FileHandle fileHandle;
     //need initialization
 }
 
@@ -28,10 +29,23 @@ RC RM_ScanIterator::getNextTuple(RID &rid, void *data){
 
 
     if(scanner.getNextRecord(rid, data) == RBFM_EOF){
+        if(_rbf_manager->closeFile(tableHandle))
+            return RM_FILE_CLOSE_FAIL;
+        if(_rbf_manager->closeFile(columnHandle))
+            return RM_FILE_CLOSE_FAIL;
         return RM_EOF;
     }else{
+        if(_rbf_manager->closeFile(tableHandle))
+            return RM_FILE_CLOSE_FAIL;
+        if(_rbf_manager->closeFile(columnHandle))
+            return RM_FILE_CLOSE_FAIL;
         return SUCCESS;
     }
+}
+
+RC RM_ScanIterator::close(){
+    // if(_rbf_manager->closeFile(fileHandle))
+    //     return RM_FILE_CLOSE_FAIL;
 }
 
 RelationManager* RelationManager::instance()
@@ -121,7 +135,11 @@ RC RelationManager::createCatalog()
     }
 
     numberOfTables = 2;
-
+    if(_rbf_manager->closeFile(tableHandle))
+        return RM_FILE_CLOSE_FAIL;
+    if(_rbf_manager->closeFile(columnHandle))
+        return RM_FILE_CLOSE_FAIL;
+    free(newNullsIndicator);
     free(record);
     return SUCCESS;
 }
@@ -174,8 +192,8 @@ RC RelationManager::createTable(const string &tableName, const vector<Attribute>
 // cout<<"Inserted: "<<numberOfTables+1<<": "<<attrs[i].name<<": "<<attrs[i].type<<": "<<attrs[i].length<<endl;
         memset(record, 0, 1000);
     }
-
     numberOfTables ++;
+    free(newNullsIndicator);
     free(record);
     return SUCCESS;
 }
@@ -287,12 +305,14 @@ RC RelationManager::getAttributes(const string &tableName, vector<Attribute> &at
         add.name = (char*)varCharBuffer;
         
         attrs.push_back(add);
-
+        // free(varCharBuffer);
     }
     if(_rbf_manager->closeFile(tableHandle))
         return RM_FILE_CLOSE_FAIL;
     if(_rbf_manager->closeFile(columnHandle))
         return RM_FILE_CLOSE_FAIL;
+    free(tableIdBuffer);
+    free(nameBuffer);
     return SUCCESS;
 }
 
@@ -346,8 +366,10 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
 RC RelationManager::readTuple(const string &tableName, const RID &rid, void *data)
 {
     FileHandle fileHandle;
-    if(_rbf_manager->openFile(tableName, fileHandle))
+    if(_rbf_manager->openFile(tableName, fileHandle)){
+cout<<"RM open file error"<<endl;
         return RM_OPEN_FILE_FAIL;
+    }
     vector<Attribute> attr;
     getAttributes(tableName, attr);
     if(_rbf_manager->readRecord(fileHandle, attr, rid, data))
@@ -386,7 +408,7 @@ RC RelationManager::scan(const string &tableName,
       RM_ScanIterator &rm_ScanIterator)
 {
     FileHandle fileHandle;
-    if(_rbf_manager->openFile(tableName, fileHandle))
+    if(_rbf_manager->openFile(tableName,fileHandle))
         return RM_OPEN_FILE_FAIL;
     vector<Attribute> attr;
 // cout<<"scan: about to getAttributes"<<endl;
