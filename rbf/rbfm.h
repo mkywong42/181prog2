@@ -25,8 +25,12 @@
 #define RBFM_MEMMOVE_FAIL 9
 #define RBFM_ATTRIBUTE_IS_NULL 10
 #define RBFM_INVALID_RECORD_SIZE 11
+#define RBFM_READ_ATTRIBUTE_FAIL 12
+#define RBFM_COMPARE_FAIL 13
 
 using namespace std;
+
+class RecordBasedFileManager;
 
 // Record ID
 typedef struct
@@ -50,7 +54,7 @@ struct Attribute {
 // Comparison Operator (NOT needed for part 1 of the project)
 typedef enum 
 { 
-    EQ_OP = 0,  // no condition// = 
+    EQ_OP = 0,  // = 
     LT_OP,      // <
     LE_OP,      // <=
     GT_OP,      // >
@@ -73,6 +77,7 @@ typedef struct SlotDirectoryRecordEntry
 {
     uint32_t length; 
     int32_t offset;
+    uint32_t state;     //0 for dead, 1 for moved, 2 for alive
 } SlotDirectoryRecordEntry;
 
 typedef SlotDirectoryRecordEntry* SlotDirectory;
@@ -98,31 +103,30 @@ The scan iterator is NOT required to be implemented for the part 1 of the projec
 //  rbfmScanIterator.close();
 
 class RBFM_ScanIterator {
-  RecordBasedFileManager* RecordBasedFileManager::_rbf_manager = NULL;
+  
 public:
-  RBFM_ScanIterator() {
-    currentPage = 0;
-    currentSlot = 0;
-    _rbf_manager = RecordBasedFileManager::instance();
-  };
-  ~RBFM_ScanIterator() {};
+  RBFM_ScanIterator();
+  ~RBFM_ScanIterator();
 
   // Never keep the results in the memory. When getNextRecord() is called, 
   // a satisfying record needs to be fetched from the file.
   // "data" follows the same format as RecordBasedFileManager::insertRecord().
-  RC getNextRecord(RID &rid, void *data) 
-  { 
-    RID temp;
-    temp.pageNum = currentPage;
-    temp.slotNum = currentSlot;
-    _rbf_manager->readRecord(file)
+  RC getNextRecord(RID &rid, void *data);
+  RC close();
 
-    return RBFM_EOF; 
-  };
-  RC close() { return -1; };
+  static RecordBasedFileManager *_rbf_manager;
+  FileHandle fileHandle;
+  vector<Attribute> recordDescriptor;
+  string conditionAttribute;
+  CompOp compOp;
+  void* data;
+  vector<string> attributeNames;
+  unsigned totalPages;
 private:
-  uint32_t currentPage;
-  uint32_t currentSlot;
+  unsigned currentPage;
+  unsigned currentSlot;
+  int comparison(const void* attribute, const void* value, Attribute &attr);
+  void insertion(void* data, RID rid);
 };
 
 

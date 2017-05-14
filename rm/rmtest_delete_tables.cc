@@ -31,6 +31,6 @@ int main()
 	  cout << "Deleting the catalog failed." << endl;
 	  return rc;
   }
-
+cout<<"done"<<endl;
   return success;
 }

@@ -1,8 +1,11 @@
 #include <cstdio>
 #include <string>
+#include <iostream>
 
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <errno.h>
 
 #include "pfm.h"
 
@@ -30,14 +33,19 @@ PagedFileManager::~PagedFileManager()
 RC PagedFileManager::createFile(const string &fileName)
 {
     // If the file already exists, error
-    if (fileExists(fileName))
+    if (fileExists(fileName)){
+cout<<errno<<endl;
+cout<<"pfm fileExist"<<endl;
         return PFM_FILE_EXISTS;
-
+    }
     // Attempt to open the file for writing
     FILE *pFile = fopen(fileName.c_str(), "wb");
     // Return an error if we fail
-    if (pFile == NULL)
+    if (pFile == NULL){
+cout<<errno<<endl;
+cout<<"pfm file is null"<<endl;
         return PFM_OPEN_FAILED;
+    }
 
     fclose (pFile);
     return SUCCESS;
@@ -56,20 +64,29 @@ RC PagedFileManager::destroyFile(const string &fileName)
 
 RC PagedFileManager::openFile(const string &fileName, FileHandle &fileHandle)
 {
+    errno = 0;
     // If this handle already has an open file, error
-    if (fileHandle.getfd() != NULL)
+    if (fileHandle.getfd() != NULL){
+cout<<errno<<endl;
+cout<<"file already open"<<endl;
         return PFM_HANDLE_IN_USE;
+    }
 
     // If the file doesn't exist, error
-    if (!fileExists(fileName.c_str()))
+    if (!fileExists(fileName.c_str())){
+cout<<errno<<endl;
+cout<<"file dne"<<endl;
         return PFM_FILE_DN_EXIST;
-
+    }
     // Open the file for reading/writing in binary mode
     FILE *pFile;
     pFile = fopen(fileName.c_str(), "rb+");
     // If we fail, error
-    if (pFile == NULL)
+    if (pFile == NULL){
+cout<<errno<<endl;
+cout<<"file is null"<<endl;
         return PFM_OPEN_FAILED;
+    }
 
     fileHandle.setfd(pFile);
 
